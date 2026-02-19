@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?><record_update table="m2m_sp_dependency_js_include">
     <m2m_sp_dependency_js_include action="INSERT_OR_UPDATE">
         <order>200</order>
-        <sp_dependency display_value="int-tel-input">c9b0f95b5387b210dadf51a0a0490e14</sp_dependency>
+        <sp_dependency display_value="intl-tel-input">c9b0f95b5387b210dadf51a0a0490e14</sp_dependency>
         <sp_js_include display_value="x_80404_gqi_queu_0.intl-tel-input-utils">fce73dd75387b210dadf51a0a0490e21</sp_js_include>
         <sys_class_name>m2m_sp_dependency_js_include</sys_class_name>
         <sys_created_by>admin</sys_created_by>

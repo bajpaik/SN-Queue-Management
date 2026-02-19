@@ -2,7 +2,7 @@
     <m2m_sp_dependency_css_include action="INSERT_OR_UPDATE">
         <order>100</order>
         <sp_css_include display_value="intlTelInput.min.css">35eef59b530bb210dadf51a0a0490e02</sp_css_include>
-        <sp_dependency display_value="int-tel-input">c9b0f95b5387b210dadf51a0a0490e14</sp_dependency>
+        <sp_dependency display_value="intl-tel-input">c9b0f95b5387b210dadf51a0a0490e14</sp_dependency>
         <sys_class_name>m2m_sp_dependency_css_include</sys_class_name>
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-02-19 07:43:34</sys_created_on>
