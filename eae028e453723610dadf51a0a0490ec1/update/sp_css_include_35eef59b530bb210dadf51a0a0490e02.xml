@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_css_include">
+    <sp_css_include action="INSERT_OR_UPDATE">
+        <lazy_load>false</lazy_load>
+        <name>intlTelInput.min.css</name>
+        <rtl_css_file_url/>
+        <source>url</source>
+        <sp_css display_value="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.12/css/intlTelInput.min.css">a0d6fd9383fb021073b8c6a6feaad3c2</sp_css>
+        <sys_class_name>sp_css_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-19 07:44:13</sys_created_on>
+        <sys_id>35eef59b530bb210dadf51a0a0490e02</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>intlTelInput.min.css</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sp_css_include_35eef59b530bb210dadf51a0a0490e02</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-19 07:44:13</sys_updated_on>
+        <url>https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.12/css/intlTelInput.min.css</url>
+    </sp_css_include>
+</record_update>
