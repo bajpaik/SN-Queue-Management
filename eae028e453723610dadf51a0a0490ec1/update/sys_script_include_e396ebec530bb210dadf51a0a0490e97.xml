@@ -1,0 +1,459 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>public</access>
+        <active>true</active>
+        <api_name>x_80404_gqi_queu_0.GQI_WalkupHelper</api_name>
+        <caller_access/>
+        <client_callable>false</client_callable>
+        <description/>
+        <mobile_callable>true</mobile_callable>
+        <name>GQI_WalkupHelper</name>
+        <sandbox_callable>false</sandbox_callable>
+        <script><![CDATA[var GQI_WalkupHelper = Class.create();
+GQI_WalkupHelper.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
+    sn_walkup_extension: new sn_walkup.ExtPointUtil().loadExtension("InteractionFacade"),
+    sn_walkup_util: new sn_walkup.ExtPointUtil().loadExtension('WalkUpUtil'),
+    WAIT_TIME: "",
+    WU_CONTEXT_TABLE: 'wu_context',
+    INTERACTION_TABLE: 'interaction',
+    QUEUE_TABLE: 'wu_location_queue',
+    OPENED_FOR: 'opened_for',
+    STATE: 'state',
+    GUEST_USER: gs.getProperty('x_80404_ltu_walkup.guest_user_profile'),
+    CREATED: 'sys_created_on',
+    QUEUE: 'queue',
+    INTERACTION_TYPE: 'walkup',
+
+    //phone ext messages
+    LEAVE_QUEUE_MSG: 'L',
+    LEAVE_QUEUE_SUCCESS_MSG: gs.getMessage('Ok, you have left all lines. See you next time!'),
+    LEAVE_QUEUE_FAILURE_MSG: gs.getMessage('There was some error processing your request.'),
+    CHECKIN_QUEUE_MSG: gs.getMessage("You've joined the Queue!"),
+    ESTIMATED_WAITTIME_MSG: gs.getMessage("Your estimated wait is "),
+    LEAVE_QUEUE_MSG_EXT: gs.getMessage("We will let you know when its your turn. Meanwhile if you wish to leave the queue, please respond to the message with "),
+    LEAVE_QUEUE_ACKNOWLEDGMENT: gs.getMessage('Thanks for visiting the walkup location'),
+
+
+    process: function( /*array*/ data) {
+        data.push("new entry");
+        return data;
+    },
+
+    createInteraction: function(userId, queueId, reason, reason_description, is_guest, guest_name, guest_email, guest_phone, is_online_checkin, is_appointment, is_badge_checkin, apt_start_time, contact_type, portal_suffix) {
+        var queueGR = this.sn_walkup_extension.getQueueBySysID(queueId);
+        if (!queueGR || !queueGR.isValidRecord()) {
+            gs.error("GQI_WalkUpUtil extension point: Invalid queue location.");
+            gs.addErrorMessage(gs.getMessage("The queue location is either inactive or does not exist. Please select a valid location."));
+            return;
+        }
+
+        var short_desc;
+        try {
+            var gr = new GlideRecord(sn_walkup.WalkUpConstants.CONTEXT_TABLE);
+            gr.initialize();
+            gr.user = userId;
+            if (reason_description) {
+                gr.reason_description = reason_description;
+                short_desc = reason_description;
+            }
+            if (reason) {
+                gr.reason = reason;
+            }
+            if (apt_start_time) {
+                gr.apt_start_time = apt_start_time;
+            }
+            gr.is_guest = is_guest;
+            gr.guest_name = guest_name;
+            gr.guest_email = guest_email;
+            gr.u_guest_phone_number = guest_phone;
+            gr.is_online_checkin = is_online_checkin;
+            gr.is_appointment = is_appointment;
+            gr.is_badge_checkin = is_badge_checkin;
+            gr.location_queue = queueId;
+            gr.contact_type = (contact_type || sn_walkup.WalkUpConstants.CONTACT_TYPE_IN_PERSON);
+
+            if (is_appointment || is_online_checkin) {
+                if (portal_suffix === "esc")
+                    gr.source = is_appointment ? "appointment_esc" : "online_esc";
+                else if (portal_suffix === "sp")
+                    gr.source = is_appointment ? "appointment_sp" : "online_sp";
+                else if (portal_suffix === "mobile")
+                    gr.source = is_appointment ? "appointment_mobile" : "checkin_mobile";
+                else if (portal_suffix === "rp")
+                    gr.source = "rp";
+                else
+                    gr.source = is_appointment ? "appointment_custom" : "online_custom";
+            } else
+                gr.source = "onsite";
+
+            if (is_badge_checkin)
+                gr.source = "badge";
+
+
+            gr.insert();
+            var eventObj = {
+                'guestName': guest_name,
+                'queueId': queueId
+            };
+            gs.eventQueue('x_80404_ltu_walkup.interaction.created', gr, guest_email, gr.sys_id);
+
+            if (!gr)
+                return false;
+
+            //If incoming payload is of type appointment, set the state to 'on_hold' else use 'new' state for the scriptable API.
+            var wu_state = '';
+            if (is_appointment) {
+                wu_state = 'on_hold';
+            } else {
+                wu_state = 'new';
+            }
+
+
+            var interactionObj = sn_interaction.Interaction.create({
+                type: sn_walkup.WalkUpConstants.WALKUP_TYPE,
+                channel_metadata: {},
+                context: gr,
+                opened_for: userId,
+                state: wu_state,
+                location: this.sn_walkup_extension.getQueueLocation(queueId),
+                short_description: (gs.nil(short_desc) ? gr.getDisplayValue('reason') : short_desc)
+            });
+
+            return interactionObj.sys_id;
+        } catch (err) {
+            gs.error("GQI_WalkUpUtil - createInteraction: Error occured while creating interaction - " + err);
+            return false;
+        }
+    },
+
+    triggerSMSToWalkupUser: function(phone, smsContent) {
+        var endpoint = gs.getProperty('x_80404_ltu_walkup.sms_api_gateway_endpoint');
+        var auth_profile = gs.getProperty('x_80404_ltu_walkup.sms_api_gateway_auth_profile');
+        var sourceId = gs.getProperty('x_80404_ltu_walkup.sms_api_gateway_sourceid');
+        var requestBody = {
+            "source": phone.toString(),
+            "content": smsContent,
+            "reference": "string",
+            "class": "mt_message",
+            "destination": phone.toString()
+        };
+        try {
+            var smsrestapi = new sn_ws.RESTMessageV2();
+            smsrestapi.setHttpMethod('post');
+            smsrestapi.setEndpoint(endpoint);
+            smsrestapi.setAuthenticationProfile('basic', auth_profile);
+            smsrestapi.setRequestBody(JSON.stringify(requestBody));
+            var response = smsrestapi.execute();
+            var responseBody = response.getBody();
+            var httpStatus = response.getStatusCode();
+            if (httpStatus != 201) {
+                gs.info("GQI_WalkUpUtil - walkupUserSMSApi: Status Api HTTP Error:" + httpStatus);
+                return {
+                    'Received': false,
+                    'Response': responseBody
+                };
+            } else {
+                return {
+                    'Received': true,
+                    'Response': responseBody
+                };
+            }
+        } catch (ex) {
+            gs.info('GQI_WalkUpUtil:walkupUserSMSApi-Exception' + ex.message);
+            return {
+                'Received': false,
+                'Response': null
+            };
+        }
+    },
+
+    getScheduleTZDateTime: function(timeZone) {
+        var sdt = new GlideScheduleDateTime();
+        sdt.setTimeZone(timeZone);
+        var gt = new GlideDateTime(sdt);
+        gt.getNumericValue();
+        gt.add(30000);
+        var scheduledTZ = gt.getDate() + 'T' + gt.getTime().getByFormat('HH:mm:ss') + 'Z';
+        return scheduledTZ.toString();
+    },
+
+    getConfigForPublicAppointmentBooking: function(catalogItemId) {
+        var apiBaseUrl = '/api/sn_apptmnt_booking/appointment';
+        var resourceUrl = '/configuration';
+        var queryString = "?catalog_id=" + catalogItemId;
+        var requestUrl = apiBaseUrl + resourceUrl + queryString;
+        return this.triggerWalkupApi(requestUrl, 'get', null, 'getConfigForPublicAppointmentBooking');
+    },
+
+    getAppointmentRuleConditions: function(requestBody) {
+        var apiBaseUrl = '/api/sn_apptmnt_booking/v1/appointment';
+        var conditionUrl = '/execute_rule_conditions';
+        var requestUrl = apiBaseUrl + conditionUrl;
+        return this.triggerWalkupApi(requestUrl, 'post', requestBody, 'getAppointmentRuleConditions');
+    },
+
+    getAppointmentsApi: function(requestBody) {
+        var apiBaseUrl = '/api/sn_apptmnt_booking/v1/appointment';
+        var availabilityUrl = '/availability';
+        var requestUrl = apiBaseUrl + availabilityUrl;
+        return this.triggerWalkupApi(requestUrl, 'post', requestBody, 'getAppointmentsApi');
+    },
+
+    getAppointmentsByLocation: function(locationId) {
+        var apiBaseUrl = '/api/sn_walkup/walk_up/appointments/' + locationId;
+        return this.triggerWalkupApi(apiBaseUrl, 'get', null, 'getAppointmentsByLocation');
+    },
+
+    submitRecordProducerForAppointment: function(catalogId, payload, newRecordID) {
+        var apiBaseUrl = '/api/sn_sc/v1/servicecatalog/items/';
+        var catalogUrl = catalogId + '/submit_producer';
+        var requestUrl = apiBaseUrl + catalogUrl;
+
+        /*******OOB widget "Online check-in experience" uses submitProducer function from spScUtil to submit a record producer, & is taken from
+		https://hi.service-now.com/scripts/app.$sp/service.spScUtil.js****/
+        var request = {
+            'variables': payload,
+            'sysparm_item_guid': newRecordID,
+            'get_portal_messages': 'true',
+            'sysparm_no_validation': 'true'
+        };
+        return this.triggerWalkupApi(requestUrl, 'post', request, 'submitRecordProducerForAppointment');
+    },
+
+    fetchOnsiteQueue: function(locationId, state, includeAppointments, limit) {
+        var apiBaseUrl = '/api/sn_walkup/walk_up/queue/all/' + locationId;
+        var queryParams = '?queueState=' + state + '&appointments=' + includeAppointments;
+        var requestUrl = apiBaseUrl + queryParams;
+        if (limit)
+            requestUrl += '&limit=' + limit;
+        return this.triggerWalkupApi(requestUrl, 'get', null, 'fetchOnsiteQueue');
+    },
+
+    fetchOnlineServiced: function(locationId, state) {
+        var apiBaseUrl = '/api/sn_walkup/walk_up/queue/all/' + locationId;
+        var queryParam = '?queueState=' + state;
+        var requestUrl = apiBaseUrl + queryParam;
+
+        return this.triggerWalkupApi(requestUrl, 'get', null, 'fetchOnlineServiced');
+    },
+
+    triggerWalkupApi: function(apiUrl, method, requestBody, apiName) {
+        var instanceUrl = 'https://' + gs.getProperty('instance_name') + '.service-now.com';
+        var endpoint = instanceUrl + apiUrl;
+
+        try {
+            var walkUpApi = new sn_ws.RESTMessageV2();
+            walkUpApi.setHttpMethod(method);
+            if (method == 'post' || method == 'put')
+                walkUpApi.setRequestBody(JSON.stringify(requestBody));
+            walkUpApi.setEndpoint(endpoint);
+            walkUpApi.setAuthenticationProfile('basic', gs.getProperty('x_80404_ltu_walkup.walkup_auth_profile'));
+            var response = walkUpApi.execute();
+            var responseBody = response.getBody();
+            var httpStatus = response.getStatusCode();
+            if (httpStatus != 200 || httpStatus != 201) {
+                gs.info("GQI_WalkUpUtil - " + apiName + ": Status Api HTTP Error:" + httpStatus);
+                return {
+                    'Recieved': false,
+                    'Response': responseBody
+                };
+            } else {
+                return {
+                    'Recieved': true,
+                    'Response': responseBody
+                };
+            }
+        } catch (ex) {
+            gs.info("GQI_WalkUpUtil: " + apiName + " -Exception: " + ex.message);
+            return {
+                'Recieved': false,
+                'Response': null
+            };
+        }
+    },
+
+    processWebhookPayload: function(payload) {
+        if (!Object.keys(payload).length)
+            return null;
+
+        /***Leave queue***/
+        if (payload.content == this.LEAVE_QUEUE_MSG) {
+            var contextGr = new GlideRecord(sn_walkup.WalkUpConstants.CONTEXT_TABLE);
+            contextGr.addQuery('u_guest_phone_number', payload.source.toString());
+            contextGr.addQuery('u_message_id', payload.reply_to.toString());
+            contextGr.query();
+            if (contextGr.next()) {
+                return this.abandonInteraction(contextGr.sys_id);
+            }
+        }
+
+    },
+
+    /**
+     * Set non-appointment interaction for a guest user to closed abandoned
+     *
+     * @param userId
+     */
+    abandonInteraction: function(contextRecordSysId) {
+        var gr = new GlideRecord(sn_walkup.WalkUpConstants.INTERACTION_TABLE);
+        var util = new sn_walkup.ExtPointUtil().loadExtension("WalkUpUtil");
+
+        gr.addQuery('context_document', contextRecordSysId);
+        gr.addQuery('type', sn_walkup.WalkUpConstants.WALKUP_TYPE);
+        gr.addQuery('state', sn_walkup.WalkUpConstants.INTERACTION_STATES.NEW)
+            .addOrCondition('state', sn_walkup.WalkUpConstants.INTERACTION_STATES.WIP);
+        gr.query();
+        if (gr.next()) {
+            var parsedCTX = util.parseContext(gr);
+
+            // Only set to closed abandoned if it's not an appointment
+            if (!parsedCTX.is_appointment) {
+                gr.setValue('state', sn_walkup.WalkUpConstants.INTERACTION_STATES.CLOSED_ABANDONED);
+                gr.update();
+                return this.LEAVE_QUEUE_SUCCESS_MSG;
+            }
+
+        }
+        return this.LEAVE_QUEUE_FAILURE_MSG;
+    },
+
+    getQueueReasons: function(queueId) {
+        try {
+            gs.info('getReasons function called ' + this.getParameter('sysparm_queueId'))
+            var reasonsList = '';
+            if (queueId != "")
+                queueId = this.getParameter('sysparm_queueId');
+            gs.info('Queue ID 1 >  ' + queueId)
+            if (gs.nil(queueId))
+                return reasonsList;
+            gs.info('Queue ID 2' + queueId)
+            var reasonsRecord = new GlideRecord('wu_m2m_location_queue_reason');
+            reasonsRecord.addQuery('wu_location_queue', queueId);
+            reasonsRecord.addQuery('wu_reason.active', true);
+            reasonsRecord.orderBy('order');
+            reasonsRecord.query();
+
+            while (reasonsRecord.next()) {
+                reasonsList += reasonsRecord.getValue('wu_reason') + ',';
+            }
+            if (reasonsList.length > 0) {
+                reasonsList = reasonsList.slice(0, -1);
+            }
+            return reasonsList;
+        } catch (e) {
+            gs.info('GQI Walkup util getQueueReasons exeption ' + e.message)
+        }
+    },
+
+    computeWaitTimeByQueueLength: function(location) {
+        var includeQueueLength = true;
+        var walkUpUtil = this.sn_walkup_util.computeWaitTime(location, includeQueueLength);
+        return walkUpUtil;
+    },
+
+    fetchReasonConfig: function(queueId) {
+        var reasonList = [];
+        var advConfigEnabled = false;
+
+        if (!queueId)
+            return reasonList;
+
+        var currLoc = new GlideRecord(sn_walkup.WalkUpConstants.LOCATION_QUEUE_TABLE);
+        if (gs.nil(queueId))
+            return;
+
+        if (currLoc.get(queueId))
+            advConfigEnabled = currLoc.appointment_booking.enable_day_level_config + '' == 'true'; //If Adv Confg is not enabled
+
+        var reasonsRecord = new GlideRecord('wu_m2m_location_queue_reason');
+        reasonsRecord.addQuery('wu_location_queue', queueId);
+        reasonsRecord.orderBy('order');
+        reasonsRecord.addQuery('wu_reason.active', true);
+        //reasonsRecord.addQuery('wu_reason.u_hide_on_portal', false);
+        reasonsRecord.query();
+        while (reasonsRecord.next()) {
+            var reasons = {
+                value: reasonsRecord.getValue('wu_reason'),
+                label: reasonsRecord.getDisplayValue('wu_reason'),
+                // PRB1348675: display_text_area should be a boolean
+                display_text_area: !!reasonsRecord.display_text_area
+            };
+
+            if (advConfigEnabled)
+                reasons.apptmnt_config_rule = reasonsRecord.getValue(sn_walkup.WalkUpConstants.FIELD_APPTMNT_CONFIG_RULE);
+
+            reasonList.push(reasons);
+        }
+
+        return reasonList;
+    },
+
+    transferInteraction: function(clientInputs) {
+        try {
+            var userId, queueId, reason, reason_description, is_guest, guest_name,
+                guest_email, guest_phone, is_online_checkin;
+            if (!clientInputs)
+                clientInputs = this.getParameter('sysparm_fields');
+            var parsedInput = JSON.parse(clientInputs);
+
+            var grInteraction = new GlideRecord('interaction');
+            grInteraction.addEncodedQuery("stateINon_hold,new,work_in_progress");
+            grInteraction.addQuery('sys_id', parsedInput.record_sys_id.toString());
+            grInteraction.query();
+
+            if (grInteraction.next()) {
+                //set up details for a new interaction
+                userId = this.GUEST_USER; //guest user sysid
+                queueId = parsedInput.selected_queue;
+                reason = parsedInput.selected_reason;
+                var contextRecord = grInteraction.context_document.getRefRecord();
+                reason_description = contextRecord.reason_description;
+                is_guest = true;
+                guest_name = contextRecord.guest_name;
+                guest_email = contextRecord.guest_email;
+                guest_phone = contextRecord.u_guest_phone_number;
+                is_online_checkin = false;
+
+                var newIntSysId = this.createInteraction(userId, queueId, reason, reason_description, is_guest, guest_name, guest_email, guest_phone, is_online_checkin);
+
+                //close current interaction;
+                grInteraction.state = 'closed_complete';
+                grInteraction.state_reason = 'agent_ended';
+                grInteraction.update();
+
+                //attach original interaction to a new record
+                var grInteractionRelatedRecord = new GlideRecord('interaction_related_record');
+                grInteractionRelatedRecord.initialize();
+                grInteractionRelatedRecord.interaction = grInteraction.sys_id;
+                grInteractionRelatedRecord.document_table = 'interaction';
+                grInteractionRelatedRecord.document_id = newIntSysId;
+                grInteractionRelatedRecord.insert();
+
+                //update work notes
+                var newInterac = grInteractionRelatedRecord.document_id.getRefRecord();
+                newInterac.work_notes = grInteraction.work_notes.getJournalEntry(-1);
+                newInterac.update();
+
+                return newIntSysId;
+            }
+        } catch (e) {
+            gs.error('GQI_WalkUpUtilClient: transferInteraction error ' + e.message);
+        }
+
+    },
+    type: 'GQI_WalkupHelper'
+});]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-11 02:17:34</sys_created_on>
+        <sys_id>e396ebec530bb210dadf51a0a0490e97</sys_id>
+        <sys_mod_count>4</sys_mod_count>
+        <sys_name>GQI_WalkupHelper</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy>protected</sys_policy>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sys_script_include_e396ebec530bb210dadf51a0a0490e97</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-19 04:54:31</sys_updated_on>
+    </sys_script_include>
+</record_update>

@@ -1,0 +1,1042 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[api.controller = function($scope, i18n, $location, $q, spUtil, gqiWalkupQueue, formatWalkUpSchedule, walkUpModal, spModal) {
+    /* widget controller */
+    var c = this;
+    // signals location loaded and recordPicker filled
+    c.locationLoaded = false;
+    // signals the end of geolocation promise to render page
+    c.geoLocationDone = false;
+    c.isUserInQueue = false;
+    c.data.recordPickerFields = {};
+    c.data.scheduleWidgets = [];
+    c.loading = false;
+    //KUSH
+    var queueLink = 'id=walkup_queue_on_site';
+    var checkInLink = 'id=gqi_walkup_check_in';
+    c.previousCampusSysId = '';
+    c.isSelected = false;
+    c.isCampusSelected = false;
+    c.selectedCampus = '';
+    c.queueLink = queueLink;
+    c.checkInLink = checkInLink;
+
+    var urlParams = $location.search();
+	console.log('$location.search() result' ,urlParams)
+
+    // call to initialize closest walk-up location, queue, and schedule.
+    initializePage();
+
+    // Listen to changes made to the LTU Campus record picker
+    $scope.$on("gqi.location.change", function(evt, parms) {
+        console.log('gqi.location.change event parms', parms)
+        var sysId = parms.newValue;
+        var name = parms.displayValue;
+        c.previousCampusSysId = parms.oldValue;
+        // When a new value is selcted from the location picker
+        if (sysId != '') {
+            c.data.campusId = sysId;
+            selectCampus(name);
+        }
+        // Clear the state of the home page
+        else {
+            c.cancelCampusSelection();
+        }
+    });
+    // Listen to changes made to the record picker
+    $scope.$on("queue.change", function(evt, parms) {
+        startLoading();
+		console.log('on queue change',parms)
+        var newLocId = parms.newValue;
+        var oldLocId = parms.oldValue;
+        var name = parms.displayValue;
+		console.log('c.previousSysId', c.previousSysId)
+        // When a new value is selcted from the location picker
+        if (newLocId && c.previousSysId === newLocId) {
+            c.previousSysId = newLocId;
+            c.locationId = newLocId;
+            checkIfLocationExist(c.locationId);
+            if (c.locationLoaded)
+                endLoading();
+        }
+        // Clear the state of the home page
+        else {
+            c.cancelSelection();
+        }
+        setLink(newLocId);
+        setUrl(newLocId);
+    });
+    // Set the state to show the clickable panels and the campus name when a campus has been selected
+    function selectCampus(name) {
+        c.selectedCampus = name;
+        c.isCampusSelected = true;
+    }
+    // Set the url parameters
+    function setUrl(locationsysid) {
+        if (locationsysid)
+            $location.search('location_id', locationsysid);
+        else
+            $location.search('location_id', null);
+        //data.config = walkUpUtil.fetchQueueConfig(locationsysid);
+    }
+
+    // Change the links to point to the walk-up pages with the corresponding id and name
+    function setLink(id) {
+        c.queueLink = queueLink + '&location_id=' + id;
+        c.checkInLink = checkInLink + '&location_id=' + id;
+		console.log('setting link. ' + c.queueLink + ' > ' + c.checkInLink)
+    }
+    c.cancelCampusSelection = function() {
+        c.selectedCampus = '';
+        c.isCampusSelected = false;
+        clearRecordPickerFields();
+    };
+
+    // Reset the state of the home page prior to selecting a location
+    c.cancelSelection = function() {
+        c.selectedName = '';
+        c.isSelected = false;
+        clearRecordPickerFields();
+        c.locationLoaded = false;
+        setUrl();
+    };
+
+    // Set the record picker fields to a clean state.
+    function clearRecordPickerFields() {
+        c.recordPickerFields = {
+            displayValue: name,
+            value: '',
+            name: 'locationQueue'
+        };
+    }
+    /**
+     * Make a call to the server to check if the passed in sysId exists or is active.
+     *
+     * @param {string} sysId - The sys_id of the wu_location_queue table.
+     */
+    function checkIfLocationExist(sysId) {
+		console.log('SYS ID ' + sysId)
+        c.server.get({
+            action: c.data.actions.checkLocationExists,
+            sysId: sysId
+        }).then(function(result) {
+            var locationName = result.data.doesLocationExist;
+
+            if (locationName) {
+                c.data.recordPickerFields = {
+                    displayValue: locationName,
+                    value: sysId,
+                    name: 'locationQueue'
+                };
+                // initial check for whether user is in a queue
+                c.server.get({
+                    action: c.data.userAction.findUserCheckInLocation,
+                    locationQueueObj: c.data.recordPickerFields
+                }).then(function(response) {
+                    if (response.data.error) {
+                        c.locationLoaded = true;
+                        endLoading();
+                        c.geoLocationDone = true;
+                        spUtil.addErrorMessage(c.data.msgs.errorMsg);
+                        return;
+                    }
+                    c.data.checkInLocation = response.data.location;
+                    var locationTimeZone = c.data.locationTimeZone = spUtil.getMomentTimeZone(response.data.locationTimeZone);
+                    var locationId = c.data.queueId = response.data.location.sys_id;
+
+                    c.data.renderWidget = response.data.renderWidget;
+                    c.data.showWaitTime = response.data.showWaitTime;
+                    c.data.interactionLocId = response.data.interactionLocationId;
+
+                    watchInteractionRecords(response.data.location.sys_id);
+
+                    // if user is already in a queue, fill recordPicker
+                    if (c.data.checkInLocation) {
+                        c.data.recordPickerFields = {
+                            displayValue: c.data.checkInLocation.sys_name,
+                            value: c.data.checkInLocation.sys_id,
+                            name: 'locationQueue'
+                        };
+
+                        //loading embedded schedule widget with payload to pass in locationId to populate scheduleWidget.data.schedule object
+                        renderWidget(locationId, locationTimeZone, c.data.renderWidget, c.data.interactionLocId);
+                        c.locationLoaded = true;
+                        c.geoLocationDone = true;
+                        c.isUserInQueue = true;
+
+                        // if user is not in a queue, perform geolocation and render page
+                    } else {
+                        navigator.geolocation.getCurrentPosition(
+                            function(position) {
+                                var geoLoc = position.coords;
+                                loadLocationQueue(geoLoc);
+                            },
+                            function(error) {
+                                // if geolocation fails (blocked by user), send undefined coordinates which server script will handle
+                                var geoLoc = {
+                                    latitude: undefined,
+                                    longitude: undefined
+                                };
+                                loadLocationQueue(geoLoc);
+                            });
+                    }
+                });
+                c.previousSysId = sysId;
+                c.setLocation(locationName);
+                setUrl(sysId);
+            } else
+                clearRecordPickerFields();
+
+        });
+    }
+
+    // Initializing page by checking if user is in queue, performing geolocation and finding
+    // finding the closest walk-up location. Performs an API call to browser and waits for
+    // promise of a location.
+    function initializePage() {
+		console.log('initializing page ', urlParams)
+        var campusSysId = urlParams.campus_id;
+        if (campusSysId) {
+            c.isCampusSelected = true;
+            c.data.campusId = campusSysId;
+        }
+
+        var queueSysId = urlParams.location_id;
+        if (queueSysId)
+            checkIfLocationExist(queueSysId);
+        else
+            clearRecordPickerFields();
+
+    }
+
+    function setKioskLocation(campusSysId) {
+        var kioskClickEvent = 'kiosk_campus.selected';
+        var parms = {};
+        parms.campusId = campusSysId;
+        $scope.$emit(kioskClickEvent, parms);
+    }
+
+    function computeWaitTime(locationId, usersPosition) {
+        c.server.get({
+            action: c.data.userAction.fetchWaitTime,
+            location: locationId,
+            usersPosition: usersPosition
+        }).then(function(response) {
+            c.data.waitTime = response.data.waitTime;
+            if (usersPosition !== 0) {
+                showYourWaitTimeMsg(c.data.waitTime);
+            } else {
+                showWaitTimeMsg(c.data.waitTime);
+            }
+        });
+    }
+
+    // performs all initialization given the geolocation (and handles case with no geolocation)
+    function loadLocationQueue(coords) {
+        var hasGeoLoc = false;
+
+        // if geolocation was successful, set flag to successful for server script
+        if (coords.latitude && coords.longitude) {
+            hasGeoLoc = true;
+        }
+
+        // send coords to server and finds closest walk-up location; falls back to user defined coords if available.
+        c.server.get({
+            action: c.data.userAction.getLocation,
+            hasGeoLoc: hasGeoLoc,
+            lat: coords.latitude,
+            lon: coords.longitude
+        }).then(function(response) {
+            c.data.queue_name = response.data.queue_name;
+            c.data.queue_location_id = response.data.queue_location_id;
+            c.data.showWaitTime = response.data.showWaitTime;
+            c.data.interactionLocId = response.data.interactionLocationId;
+
+            var closestLoc = response.data.closestLoc;
+            if (closestLoc) {
+                c.locationLoaded = true;
+                // setting autopopulated recordPicker here
+                c.data.recordPickerFields = {
+                    displayValue: closestLoc.displayValue,
+                    value: closestLoc.locationId,
+                    name: 'locationQueue'
+                };
+                var locationTimeZone = spUtil.getMomentTimeZone(response.data.locationTimeZone);
+                var locationId = closestLoc.locationId;
+                c.data.locationTimeZone = locationTimeZone;
+                c.data.queueId = locationId;
+
+                //loading embedded schedule widget with payload to pass in locationId to populate scheduleWidget.data.schedule object
+                renderWidget(locationId, locationTimeZone, c.data.renderWidget, c.data.queue_location_id);
+            }
+        });
+        // after initializing all information, setting flag to allow screen to render
+        c.geoLocationDone = true;
+    }
+
+    // retrieves hours of operation for the next working days using moment.js
+    // parameter 'entries' denotes the number of days
+    function fetchHoursOfOperation(entries) {
+        var spanRange = {};
+
+        // PRB1413642: spanRange.start is defined by 'start of day' date then utc offset is added.
+        // only works for negative utc offsets, + offsets override opening hours of operation.
+        // for + offsets, make start the end of previous day
+        var start = moment().tz(c.data.locationTimeZone).startOf('day');
+        if (start.utcOffset() > 0)
+            start.subtract(1, 'seconds');
+
+        spanRange.start = start.format();
+        spanRange.end = moment().tz(c.data.locationTimeZone).startOf('day').add(1, 'years').subtract(1, 'seconds').format();
+        c.data.spanRange = spanRange;
+
+        // make server call to retrieve schedule span for the next 5 days
+        c.server.get({
+            action: c.data.userAction.fetchSchedule,
+            entries: entries,
+            locationTz: c.data.locationTimeZone,
+            locationId: c.data.recordPickerFields.value,
+            spanRange: spanRange
+        }).then(function(response) {
+            if (response.data.error) {
+                spUtil.addErrorMessage(c.data.msgs.scheduleErrorMsg);
+                return;
+            }
+            var schedule = response.data.hoursOfOperation;
+            var oneSpan = response.data.oneSpan;
+            var scheduleSpan = formatWalkUpSchedule.formatSchedule(schedule.span, c.data.locationTimeZone)
+            c.data.hasSchedule = schedule.hasSchedule;
+            c.data.scheduleSpan = scheduleSpan;
+
+            // formatting the span to contain only today's and next available hours of operation.
+            c.data.scheduleObj = formatHoursOfOperation(scheduleSpan, oneSpan);
+        });
+    }
+
+    // performs formatting of schedule span for rendering (today and next available)
+    function formatHoursOfOperation(scheduleSpan, oneSpan) {
+        var scheduleObj = {};
+        // moment will receive the day name in english unless 'locale' is specified and set.
+        // The english name will be used to index the translated version of the day name.
+        var todayName = moment().format('ddd');
+        var timeZoneAbb = moment.tz(c.data.locationTimeZone).zoneAbbr();
+        var allDaySched = "12:00am - 11:59pm (" + timeZoneAbb + ")";
+        if (c.data.hasSchedule) {
+            var todayHours = scheduleSpan[todayName].list;
+            // initializing days
+            scheduleObj.today = {};
+            scheduleObj.today.day = scheduleSpan[todayName].abbreviated;
+            scheduleObj.today.hours = [];
+            scheduleObj.nextAvail = {};
+            scheduleObj.nextAvail.hours = [];
+            var days = Object.keys(scheduleSpan);
+            var ind = days.indexOf(todayName);
+            var i = ind < (days.length - 1) ? ind + 1 : 0;
+
+            if (oneSpan) {
+                scheduleObj.today.hours.push(allDaySched);
+                scheduleObj.nextAvail.day = scheduleSpan[days[i]].abbreviated;
+                scheduleObj.nextAvail.hours.push(allDaySched);
+                return scheduleObj;
+            } else {
+                // looping through scheduleSpans for a today and ignores duplicates
+                for (var todayInd = 0; todayInd < todayHours.length; todayInd++) {
+                    var tempToday = todayHours[todayInd].start + " - " + todayHours[todayInd].end;
+                    if (!scheduleObj.today.hours.includes(tempToday))
+                        scheduleObj.today.hours.push(tempToday);
+                }
+
+                // looping through span until a day with hours of operation (skips holidays and weekend)
+                while (i + 1 !== ind) {
+                    if (scheduleSpan[days[i]].list.length === 0) {
+                        i = i < (days.length - 1) ? i + 1 : 0;
+                    } else {
+                        // initialize next available
+                        var nextHours = scheduleSpan[days[i]].list;
+
+                        // format start date as month date (eg. Apr 1st) if the start date is
+                        // more than week in the future. This formatting will only
+                        // ever be applicable to the "nextHours".
+                        // note: nextHours is an array of all the spans on the same day.
+                        if (nextHours[0].fStart && nextHours[0].fStart.diff(moment(), 'days') > 6)
+                            scheduleObj.nextAvail.day = nextHours[0].fStart.format('MMM Do');
+                        else
+                            scheduleObj.nextAvail.day = scheduleSpan[days[i]].abbreviated;
+
+                        for (var nextInd = 0; nextInd < nextHours.length; nextInd++) {
+                            var tempNext = nextHours[nextInd].start + " - " + nextHours[nextInd].end;
+                            if (!scheduleObj.nextAvail.hours.includes(tempNext))
+                                scheduleObj.nextAvail.hours.push(tempNext);
+
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        return scheduleObj;
+    }
+
+
+    // Check for when the walk-up check-in is closed due to hours of operation.
+    c.isClosed = function(schedule) {
+        return schedule && !schedule.isCheckInOpen;
+    }
+
+    // Check for when walk-up check-in in in away state
+    c.isAway = function(schedule) {
+        return schedule && schedule.enableAway && schedule.isCheckInOpen;
+    }
+
+    c.showCheckInBtn = function(schedule) {
+        var btnVisible = false;
+        var isAway = c.isAway(schedule);
+        var isClosed = c.isClosed(schedule);
+        if (isAway == undefined || isClosed == undefined || isAway || isClosed)
+            btnVisible = false;
+        else
+            btnVisible = true;
+		endLoading();
+        return btnVisible;
+    };
+
+    /**
+     * Will initialize the record watcher for the interaction table on this page. Each time there
+     * is a change, it will fetch the latest queue status.
+     *
+     * @param {string} locationId - The sys_id of the selected walk-up location
+     */
+    function watchInteractionRecords(locationId) {
+        // Record watch for interaction queue
+        spUtil.recordWatch($scope, 'interaction', 'location=' + c.data.interactionLocId, function(name, data) {
+            fetchQueue(c.data.locationTimeZone, locationId);
+        });
+    }
+
+    // fetches length of queue and user position (0 if not in queue) from gqiWalkupQueue dependency
+    function fetchQueue(locationTimeZone, locationId) {
+        gqiWalkupQueue.fetchOnlineWaiting(locationTimeZone, locationId, c.data.isApptmntEnabled, function(data) {
+            c.waitingList = {
+                queueLength: data.head.length,
+                userPosition: data.userPosition
+            };
+            c.isUserInQueue = c.waitingList && (c.waitingList.userPosition > 0);
+            computeWaitTime(locationId, c.waitingList.userPosition);
+        });
+
+    }
+
+
+    function watchWaitTime(locationId) {
+        var changeFound;
+
+        // Record watch for wu_location_queue
+        spUtil.recordWatch($scope, 'wu_location_queue', 'sys_id=' + locationId, function(name) {
+            var data = name.data;
+
+            var len = data.changes.length;
+            for (var i = 0; i < len; i++) {
+                if (data.changes[i] === 'average_wait_time') {
+                    changeFound = true;
+                } else {
+                    changeFound = false;
+                }
+            }
+            if (changeFound) {
+                fetchQueue(c.data.locationTimeZone, locationId);
+            }
+
+        });
+
+    }
+
+
+
+    // passes Walk-up Schedule widget the location_id as payload due to lack of URL parameters, and renders widget
+    // payload action causes embedded widget to use passed in sys_id instead of URL parameters
+    function renderWidget(sys_id, locationTz, action, interactionLocationId) {
+        spUtil.get('gqi-walkup-schedule', {
+            sys_id: sys_id,
+            action: action
+        }).then(function(response) {
+            c.data.scheduleWidgets.pop();
+            c.data.scheduleWidgets.push(response);
+        });
+
+        //retrieving and watching queue information
+        watchInteractionRecords(sys_id);
+        fetchQueue(locationTz, sys_id);
+
+        if (c.data.showWaitTime) {
+            watchWaitTime(sys_id);
+        }
+
+        //getting hours of operation from GlideSchedule for 2 working days
+        fetchHoursOfOperation(2);
+    }
+
+    // handles when recordPicker's field is changed by user - performs all initialization actions for newly selected location
+    c.setLocation = function(loc) {
+        if (loc) {
+            c.selectedName = loc;
+            c.isSelected = true;
+            c.locationLoaded = true;
+            c.server.get({
+                action: c.data.userAction.changeLocation,
+                queue_id: c.data.recordPickerFields.value
+            }).then(function(response) {
+                var locationTimeZone = spUtil.getMomentTimeZone(response.data.locationTimeZone);
+                var locationId = c.data.recordPickerFields.value;
+                c.data.locationTimeZone = locationTimeZone;
+                c.data.queueId = locationId;
+                c.data.queue_name = response.data.queue_name;
+                c.data.showWaitTime = response.data.showWaitTime;
+                c.data.queue_location_id = response.data.queue_location_id;
+                c.data.interactionLocId = response.data.interactionLocationId;
+                c.data.hasAppointmentBooking = response.data.hasAppointmentBooking;
+                //loading embedded schedule widget with payload to pass in locationId to populate scheduleWidget.data.schedule object
+                // fetches and watches queue object as well as the scheduleObject.
+                renderWidget(locationId, locationTimeZone, c.data.renderWidget, c.data.queue_location_id);
+
+            });
+            // handles case where recordPicker is cleared
+        } else {
+            c.locationLoaded = false;
+        }
+    };
+
+
+    // allows user to leave queue on button click if user is in queue
+    c.leaveQueue = function() {
+        walkUpModal.promptModal($scope,
+            c.data.msgs.leaveQueueHeaderMsg,
+            c.data.msgs.leaveQueueInfoMsg,
+            c.data.msgs.agreeModalMsg,
+            c.data.msgs.stayInQueueMsg,
+            clearFields,
+            leaveQueueConfig,
+            'leaveQueueModal');
+    };
+
+    function showWaitTimeMsg(waitTime) {
+        i18n.getMessage('The current estimated wait time is {0} min', function(msg) {
+            c.waitTimeMessage = msg.withValues([waitTime]);
+        });
+    }
+
+    function showYourWaitTimeMsg(waitTime) {
+        i18n.getMessage('Your estimated wait time is {0} min', function(msg) {
+            c.yourWaitTimeMessage = msg.withValues([waitTime]);
+        });
+    }
+
+    // resets leave-queue fields everytime modal is clicked out of or closed
+    function clearFields() {
+        c.data.error = false;
+    }
+
+    // send server call to remove user from queue and recalculates queue.
+    function leaveQueueConfig() {
+        c.server.get({
+            action: c.data.userAction.leaveQueue
+        }).then(function(response) {
+            renderWidget(c.data.queueId, c.data.locationTimeZone, c.data.renderWidget, c.data.interactionLocId);
+            c.isUserInQueue = false;
+            clearFields();
+        });
+    }
+
+    // redirects user to online check-in on button click
+    c.gotoOnlineCheckin = function() {
+        var redirectObj = {
+            id: 'gqi_walkup_check_in',
+            location_id: c.data.recordPickerFields.value
+        };
+        $location.search(redirectObj);
+    };
+
+    // redirects user to online check-in on button click
+    c.gotoScheduleAppointment = function() {
+        var redirectObj = {
+            id: "ltu_schedule_apntmt",
+            location_id: c.data.recordPickerFields.value
+        };
+        $location.search(redirectObj);
+    };
+
+    function startLoading() {
+        c.loading = true;
+        jQuery("#spinner").show();
+    }
+
+    function endLoading() {
+        c.loading = false;
+        jQuery("#spinner").hide();
+    }
+}]]></client_script>
+        <controller_as>c</controller_as>
+        <css>.location-header {&#13;
+  margin-top: 25px;&#13;
+  margin-bottom: 25px;&#13;
+  display: block;&#13;
+  .location-name {&#13;
+    display-inline: inline-block;&#13;
+    h2 {&#13;
+      font-size: 1.5em;&#13;
+      display: inline-block;&#13;
+      margin-right: 8px;&#13;
+    }&#13;
+  }&#13;
+}&#13;
+.location-picker,&#13;
+.queue-picker {&#13;
+    flex: 1; &#13;
+     margin: 10px;&#13;
+}&#13;
+.spinner {&#13;
+    display: flex;&#13;
+    justify-content: center;&#13;
+    align-items: center;&#13;
+    flex: 1;&#13;
+    background-color: $picker-background-color-light;&#13;
+    padding: 20px 40px; &#13;
+    overflow: auto;&#13;
+&#13;
+    .spinnerLoading {	&#13;
+      font-size: 2.5em;&#13;
+    }&#13;
+}&#13;
+@media (max-width: 768px) {&#13;
+    .location-header {&#13;
+        flex-direction: column; /* Stack items vertically on smaller screens */&#13;
+    }&#13;
+    .location-picker, .queue-picker {&#13;
+        width: 100%; /* Make sure each picker takes full width on smaller screens */&#13;
+        margin-bottom: 10px; /* Add spacing between pickers */&#13;
+    }&#13;
+}&#13;
+&#13;
+.check-in-header {&#13;
+  margin-left: 0px;&#13;
+  margin-top: 5px;&#13;
+  margin-bottom: -5px;&#13;
+  font-weight: bold;&#13;
+}&#13;
+&#13;
+.hours-of-op {&#13;
+  margin-left: -10px;&#13;
+}&#13;
+&#13;
+.h4 {&#13;
+  font-size: 16px;&#13;
+  margin-bottom: 3px;&#13;
+&#13;
+}&#13;
+&#13;
+.queue-info {&#13;
+  font-size: 15px;&#13;
+  margin-bottom: 10px;&#13;
+  margin-top: 5px;&#13;
+  display: inline-block;&#13;
+}&#13;
+&#13;
+.queue-position {&#13;
+  text-align: left;&#13;
+  margin-top: -20px;&#13;
+  margin-bottom: -25px;&#13;
+  font-size: 36px;&#13;
+  line-height: 100px;&#13;
+  font-weight: 700;&#13;
+}&#13;
+&#13;
+&#13;
+.wu-checkin {&#13;
+  margin-bottom: -10px;&#13;
+  margin-right: 10px;&#13;
+}&#13;
+&#13;
+.wu-leave {&#13;
+  margin-bottom: -10px;&#13;
+}&#13;
+&#13;
+.disclaimer {&#13;
+  font-size: 14px;&#13;
+  margin-bottom: 7px;&#13;
+&#13;
+}&#13;
+&#13;
+.schedule-entry {&#13;
+  display: flex;&#13;
+  .day-tag {&#13;
+    flex-basis: 20%;&#13;
+    padding-right: 0px;&#13;
+  }&#13;
+  .schedule-tag {&#13;
+    flex-basis: 80%;&#13;
+  }&#13;
+}&#13;
+&#13;
+.bs-callout {&#13;
+  margin: 0px 0px 12px !important;&#13;
+  padding: 10px !important;&#13;
+  border-left-style: solid;&#13;
+  border-left-width: 10px;&#13;
+  color: $gray-dark;&#13;
+}&#13;
+&#13;
+.bs-callout-planned {&#13;
+  background-color: lighten($info, 35%);&#13;
+  border-color: $info;&#13;
+}&#13;
+&#13;
+.bs-callout-success {&#13;
+  background-color: lighten($success, 40%);&#13;
+  border-color: $success;&#13;
+}&#13;
+&#13;
+.button-container {&#13;
+  display: inline-block;&#13;
+}&#13;
+&#13;
+.button-align {&#13;
+  display: flex;&#13;
+  margin-bottom: 10px;&#13;
+}</css>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description/>
+        <docs/>
+        <field_list/>
+        <has_preview>false</has_preview>
+        <id/>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {
+  
+}]]></link>
+        <name>GQI Walkup Location Select (LTU)</name>
+        <option_schema/>
+        <public>true</public>
+        <roles/>
+        <script><![CDATA[(function() {
+    /* populate the 'data' object */
+    /* e.g., data.table = $sp.getValue('table'); */
+    var m = data.msgs = {};
+    var userId, userIssue, userIssueId;
+    var otherIssue = "";
+    var queueName = '';
+    var CONSTANTS = sn_walkup.WalkUpConstants;
+
+    options.titleMsg = options.title ? options.title : gs.getMessage("Walk-up Check-in");
+    options.locationHeadMsg = options.location_label ? options.location_label : gs.getMessage("Select a Walk-up Location");
+	options.color = 'primary';
+    m.goToCheckInMsg = gs.getMessage('Go to check-in');
+    m.findingLocation = gs.getMessage('Finding location...');
+    m.locationSelectMsg = gs.getMessage('Select A Walk-up Location:');
+    m.closedHoursMessage = gs.getMessage("Upcoming Hours");
+    m.hoursMessage = gs.getMessage("Current & Upcoming Hours");
+    m.currentAway = gs.getMessage('Currently away');
+    m.currentClosed = gs.getMessage('Currently closed');
+    m.leaveQueueBtn = gs.getMessage('Leave Queue');
+    m.stayInQueueMsg = gs.getMessage('I want to stay in this queue');
+    m.agreeModalMsg = gs.getMessage('I still want to leave this queue');
+    m.leaveQueueHeaderMsg = gs.getMessage('Are you sure you want to leave the queue?');
+    m.leaveQueueInfoMsg = gs.getMessage('You will lose your place in line.');
+    m.errorMsg = gs.getMessage('Could not find your location. Please select a location below.');
+	m.scheduleApointment = gs.getMessage('Schedule Appointment');
+    m.scheduleErrorMsg = gs.getMessage('Could not find hours of operation for the location.');
+    var u = data.user = {};
+    u.employee = 'employee';
+
+    var actions = data.actions = {};
+    actions.checkLocationExists = 'CHECK_EXISTS';
+    var a = data.userAction = {};
+    a.changeLocation = 'CHANGE_LOCATION';
+    a.getLocation = 'GET_LOCATION';
+    a.fetchSchedule = 'GET_SCHEDULE_SPAN';
+    a.findUserCheckInLocation = 'CHECK_IN_STATUS';
+    a.leaveQueue = 'LEAVE_QUEUE';
+    a.fetchWaitTime = 'FETCH_WAIT_TIME';
+
+    var l = data.location = {};
+
+    var queueId = data.queueId;
+    var WalkUpUtil = new sn_walkup.ExtPointUtil().loadExtension("WalkUpUtil");
+    var WalkUpScheduleUtil = new sn_walkup.ExtPointUtil().loadExtension("WalkUpScheduleUtil");
+    //var WalkUpGeoLocation = new sn_walkup.WalkUpGeoLocation();
+    var facade = new sn_walkup.ExtPointUtil().loadExtension("InteractionFacade");
+
+    if (input && input.action === actions.checkLocationExists) {
+        data.doesLocationExist = WalkUpUtil.checkLocationExists(input.sysId);
+
+	}
+	
+    if (input)
+        handleInput();
+
+    function handleInput() {
+        userId = gs.getUserID();
+
+        if (data.queueId) {
+            data.interaction_location_id = facade.getQueueLocation(data.queueId);
+        }
+
+        // initial check to see whether user is checked in to queue
+        if (input.action === a.findUserCheckInLocation) {
+            try {
+                data.renderWidget = CONSTANTS.RENDER_WIDGET;
+                //var locationQueueRecord = facade.findUserCheckInLocation(userId);
+				var locationQueueRecord = input.locationQueueObj;
+                if (locationQueueRecord) {
+                    var locationQueueId = locationQueueRecord.value;
+                    var locationQueueName = locationQueueRecord.displayValue;
+
+                    data.location.sys_id = locationQueueId;
+                    data.location.sys_name = locationQueueName;
+                    data.locationTimeZone = WalkUpUtil.fetchLocationTimeZone(locationQueueId);
+                    data.interactionLocationId = facade.getQueueLocation(locationQueueId);
+
+                    var config = WalkUpUtil.fetchQueueConfig(locationQueueId);
+                    data.showWaitTime = (config.showWaitTime === '1');
+                    data.interactionLocationId = facade.getQueueLocation(locationQueueId);
+                } else {
+                    data.location = false; // tell client to use geolocation
+                    return;
+                }
+            } catch (err) {
+                data.error = true;
+                gs.error('Walk-up status widget - Error occured while computing closest walk-up location.' + err);
+            }
+        }
+
+        // uses geolocation to receive closest walk-up location (with fallback options)
+        if (input.action === a.getLocation) {
+            // geolocation was successful
+            if (input.hasGeoLoc) {
+                data.geoCoords = {
+                    latitude: input.lat,
+                    longitude: input.lon
+                };
+            }
+
+            // finds closest walk-up location regardless of geolocation success (falls back to user value for location)
+            data.closestLoc = WalkUpGeoLocation.getClosestWalkUpLocation(null, data.geoCoords);
+
+            // if location is found, return location details to client script
+            if (data.closestLoc) {
+                data.queueId = data.closestLoc.locationId;
+                queueId = data.queueId;
+                data.locationTimeZone = WalkUpUtil.fetchLocationTimeZone(queueId);
+                data.queue_name = WalkUpUtil.getQueueName(queueId);
+                data.queue_location_id = facade.getQueueLocation(queueId);
+                var config1 = WalkUpUtil.fetchQueueConfig(data.queueId);
+                data.showWaitTime = (config1.showWaitTime === '1');
+                data.interactionLocationId = facade.getQueueLocation(data.queueId);
+            }
+        }
+
+        if (input.action === a.fetchWaitTime) {
+            data.waitTime = WalkUpUtil.getOnlineWaitTime(input.location, input.usersPosition);
+            return;
+        }
+
+        // when recordPicker is changed
+        if (input.action === a.changeLocation) {
+            data.queueId = input.queue_id;
+            queueId = data.queueId;
+            data.locationTimeZone = WalkUpUtil.fetchLocationTimeZone(queueId);
+            data.queue_name = WalkUpUtil.getQueueName(queueId);
+            data.queue_location_id = facade.getQueueLocation(queueId);
+            var utilConfig = WalkUpUtil.fetchQueueConfig(queueId);
+			data.hasAppointmentBooking = utilConfig.isApptmntEnabled;
+            data.showWaitTime = (utilConfig.showWaitTime === '1');
+            data.interactionLocationId = facade.getQueueLocation(queueId);
+        }
+
+        // fetching week span from GlideSchedule
+        if (input.action === a.fetchSchedule) {
+            var scheduleRange = input.spanRange;
+            var locationId = input.locationId;
+            var tz = input.locationTz;
+            var entries = input.entries;
+            data.hoursOfOperation = WalkUpScheduleUtil.fetchScheduleSpan(locationId, scheduleRange, tz, entries);
+        }
+
+        if (input.action === a.leaveQueue) {
+            var gr = new GlideRecord(CONSTANTS.INTERACTION_TABLE);
+            if (gr.isValid()) {
+                gr.addActiveQuery();
+                gr.addQuery('type', CONSTANTS.WALKUP_TYPE);
+                gr.addQuery('opened_for', userId);
+                gr.addQuery('state', CONSTANTS.INTERACTION_STATES.NEW)
+                    .addOrCondition('state', CONSTANTS.INTERACTION_STATES.WIP);
+                gr.query();
+
+                while (gr.next()) {
+                    var parsedCTX = WalkUpUtil.parseContext(gr);
+
+                    // Only set to closed abandoned if it's not an appointment
+                    if (!parsedCTX.is_appointment) {
+                        gr.setValue('state', CONSTANTS.INTERACTION_STATES.CLOSED_ABANDONED);
+                        gr.update();
+                    }
+                }
+            }
+        }
+    }
+})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-11 00:51:44</sys_created_on>
+        <sys_id>338357645387b210dadf51a0a0490ed8</sys_id>
+        <sys_mod_count>29</sys_mod_count>
+        <sys_name>GQI Walkup Location Select (LTU)</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sp_widget_338357645387b210dadf51a0a0490ed8</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-19 04:39:59</sys_updated_on>
+        <template><![CDATA[<div class="panel panel-{{options.color}} b">
+  <div ng-hide="true" ng-repeat="i in c.data.scheduleWidgets">
+    <sp-widget widget="i"></sp-widget>
+  </div>
+
+  <div class="panel-heading panel-primary">
+    <h2 class="h4 panel-title" aria-label="{{c.options.titleMsg}}">
+      {{c.options.titleMsg}}
+    </h2>
+  </div>
+
+ <!-- <div class="panel-body" ng-cloak ng-show="!c.locationLoaded">
+    {{data.msgs.findingLocation}}
+  </div> -->
+
+  <div class="panel-body">
+    <div class="check-in-header">
+      <p aria-label="{{c.options.locationHeadMsg}}">
+        {{c.options.locationHeadMsg}}
+      </p>
+    </div>
+    <div>
+
+    </div>
+    <div class="panel-body container-fluid location-header">
+      <div ng-if="!c.isSelected">
+       <div class="location-picker">
+        <gqi-walkup-location-picker id="location-dropdown"  display-field="'name'" placeholder="${Select a location}" 
+                          value-field="'sys_id'" search-fields="'name'" api="'/api/x_80404_gqi_walkup/public_api/get_locations'"
+                          multiple="false"  aria-label="select-location">
+        </gqi-walkup-location-picker>
+        </div>
+        <div class="queue-picker" ng-if="c.isCampusSelected">
+         <gqi-walkup-queue-picker id="queue-dropdown"  display-field="'name'" placeholder="${Select a queue}" 
+                          value-field="'sys_id'"  search-fields="'name'" api="'/api/x_80404_gqi_walkup/public_api/get_queues'"
+                          multiple="false" field="c.data.recordPickerFields" default-query="'?campus_location_id=' + c.data.campusId" aria-label="select-queue">
+        </gqi-walkup-queue-picker>
+        </div>
+        
+      </div>
+      
+      <div ng-if="c.isSelected" class="location-name">
+          <h2 class="location-name">
+              {{c.selectedName}}
+          </h2>
+         <button class="cancel-location" ng-click="c.cancelSelection()" sn-focus="true">${Change location}</button>
+      </div>
+     <!--  <div id="spinner" ng-show="c.loading" class="spinner" aria-hidden="true" name="spinner">
+         <i class="fa fa-spinner fa-spin spinnerLoading"></i>
+       </div> -->
+  </div>
+    <!--<div class="location-header">
+      <div class="location-picker">
+        <sn-record-picker
+                          id="location-dropdown"
+                          table="'wu_location_queue'"
+                          placeholder="${Select a location}"
+                          search-fields="'name'"
+                          on-change="c.setLocation(val)"
+                          value-field="'sys_id'"
+                          display-field="'name'"
+                          page-size="100"
+                          field="c.data.recordPickerFields"
+                          default-query="'active=true^access_type!=external_users'"
+                          >
+        </sn-record-picker>
+      </div>
+    </div> -->
+
+<!-- Estimated wait time -->
+
+    <div ng-if="c.locationLoaded &&
+                !c.isUserInQueue &&
+                c.data.showWaitTime &&
+                !c.isAway(c.data.scheduleWidgets[0].data.schedule) &&
+                !c.isClosed(c.data.scheduleWidgets[0].data.schedule)">
+      {{c.waitTimeMessage}}
+    </div>
+
+    <div ng-if="c.locationLoaded && c.isAway(c.data.scheduleWidgets[0].data.schedule)"
+         ng-cloak
+         aria-label="{{c.data.scheduleWidgets[0].data.awayMessage}}">
+      <div>{{c.data.scheduleWidgets[0].data.awayMessage}}</div>
+    </div>
+    <div ng-if="c.locationLoaded && c.isClosed(c.data.scheduleWidgets[0].data.schedule)"
+         ng-cloak
+         aria-label="{{c.data.scheduleWidgets[0].data.closedMessage}}">
+      <div>{{c.data.scheduleWidgets[0].data.closedMessage}}</div>
+    </div>
+    <!-- Hours of Operation template -->
+    <div class="location-section" ng-cloak ng-include="'gqiHoursOfOperation'" ng-if="c.data.scheduleWidgets[0].data.schedule && c.locationLoaded && !c.isUserInQueue"></div>
+    <div class="location-section" ng-include="'gqiScheduledHours'"></div>
+   <!-- <div class="queue-info"
+         ng-if="c.locationLoaded && c.isUserInQueue"
+         aria-label="${Your Queue Position}">
+      ${Your Queue Position}
+      <h2 class="queue-position"
+          ng-if="c.locationLoaded && c.isUserInQueue"
+          aria-label="{{c.waitingList.userPosition}}">
+        #{{c.waitingList.userPosition}}
+      </h2>
+      <div ng-if="c.isUserInQueue && c.data.showWaitTime && !c.isAway(c.data.scheduleWidgets[0].data.schedule)">
+        {{c.yourWaitTimeMessage}}
+      </div> 
+
+    </div> -->
+    <div class="button-container">
+      <div class="button-align">
+        <div class="wu-checkin" ng-if="c.locationLoaded && c.showCheckInBtn(c.data.scheduleWidgets[0].data.schedule)">
+          <button type="button"
+                  ng-disabled="!c.locationLoaded"
+                  class="btn btn-primary"
+                  ng-cloak
+                  ng-click="c.gotoOnlineCheckin()">
+            {{data.msgs.goToCheckInMsg}}
+          </button>
+        </div>
+         <div class="wu-checkin" ng-if="c.locationLoaded && c.data.hasAppointmentBooking">
+          <button type="button"
+                  ng-disabled="!c.locationLoaded"
+                  class="btn btn-primary"
+                  ng-cloak
+                  ng-click="c.gotoScheduleAppointment()">
+            {{data.msgs.scheduleApointment}}
+          </button>
+        </div>
+       <!-- <div class="wu-leave" ng-if="c.locationLoaded">
+          <button type="button"
+                  class="btn btn-default"
+                  ng-cloak
+                  ng-click="c.leaveQueue()">
+            {{data.msgs.leaveQueueBtn}}
+          </button>
+        </div> -->
+      </div>
+    </div>
+    <!-- Show buttons if queue is open or when user is checked in (regardless of closed or away) -->
+
+  </div>
+</div>]]></template>
+    </sp_widget>
+</record_update>
