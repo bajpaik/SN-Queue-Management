@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element attributes="update_synch=true" db_object_id="2ba9faca5309e250dadf51a0a0490e59" extends="awa_queue" label="Walk-up Location Queue" max_length="40" name="wu_location_queue" type="collection">
+        <element label="Walkup Campus" max_length="32" name="x_80404_gqi_queu_0_walkup_campus" reference="cmn_location" type="reference"/>
+    </element>
+</database>

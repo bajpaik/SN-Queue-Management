@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element db_object_id="cdc4ec2453323210dadf51a0a0490e8f" label="Enterprise Configs" max_length="40" name="x_80404_gqi_queu_0_enterprise_configs" type="collection">
+        <element label="Logo" max_length="40" name="logo" type="user_image"/>
+        <element label="URL Suffix" max_length="40" name="url_suffix" type="string"/>
+        <element label="Title" max_length="40" name="title" type="string"/>
+    </element>
+</database>

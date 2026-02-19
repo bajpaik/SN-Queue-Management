@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="DELETE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_80404_gqi_queu_0.GQI_WalkupExtension</api_name>
+        <caller_access/>
+        <client_callable>false</client_callable>
+        <description>Implements extension point x_80404_gqi_queu_0.GQI_WalkupExtension</description>
+        <mobile_callable>false</mobile_callable>
+        <name>GQI_WalkupExtension</name>
+        <sandbox_callable>false</sandbox_callable>
+        <script><![CDATA[var GQI_WalkupExtension = Class.create();
+GQI_WalkupExtension.prototype = {
+    initialize: function() {
+    },
+
+    process: function(/*array*/ data) {
+        data.push("new entry");
+        return data;
+    },
+
+    type: 'GQI_WalkupExtension'
+};]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-19 02:21:26</sys_created_on>
+        <sys_id>bd057017530f7210dadf51a0a0490ef4</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>GQI_WalkupExtension</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sys_script_include_bd057017530f7210dadf51a0a0490ef4</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-19 02:21:26</sys_updated_on>
+    </sys_script_include>
+    <sys_update_version action="INSERT_OR_UPDATE">
+        <action>DELETE</action>
+        <application display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</application>
+        <file_path/>
+        <instance_id>013562ef1bee39949377eb9b2d4bcb8c</instance_id>
+        <instance_name>dev221586</instance_name>
+        <name>sys_script_include_bd057017530f7210dadf51a0a0490ef4</name>
+        <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;record_update table="sys_script_include"&gt;&lt;sys_script_include action="INSERT_OR_UPDATE"&gt;&lt;access&gt;package_private&lt;/access&gt;&lt;active&gt;true&lt;/active&gt;&lt;api_name&gt;x_80404_gqi_queu_0.GQI_WalkupExtension&lt;/api_name&gt;&lt;caller_access/&gt;&lt;client_callable&gt;false&lt;/client_callable&gt;&lt;description&gt;Implements extension point x_80404_gqi_queu_0.GQI_WalkupExtension&lt;/description&gt;&lt;mobile_callable&gt;false&lt;/mobile_callable&gt;&lt;name&gt;GQI_WalkupExtension&lt;/name&gt;&lt;sandbox_callable&gt;false&lt;/sandbox_callable&gt;&lt;script&gt;&lt;![CDATA[var GQI_WalkupExtension = Class.create();
+GQI_WalkupExtension.prototype = {
+    initialize: function() {
+    },
+
+    process: function(/*array*/ data) {
+        data.push("new entry");
+        return data;
+    },
+
+    type: 'GQI_WalkupExtension'
+};]]&gt;&lt;/script&gt;&lt;sys_class_name&gt;sys_script_include&lt;/sys_class_name&gt;&lt;sys_created_by&gt;admin&lt;/sys_created_by&gt;&lt;sys_created_on&gt;2026-02-19 02:21:26&lt;/sys_created_on&gt;&lt;sys_id&gt;bd057017530f7210dadf51a0a0490ef4&lt;/sys_id&gt;&lt;sys_mod_count&gt;0&lt;/sys_mod_count&gt;&lt;sys_name&gt;GQI_WalkupExtension&lt;/sys_name&gt;&lt;sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0"&gt;eae028e453723610dadf51a0a0490ec1&lt;/sys_package&gt;&lt;sys_policy/&gt;&lt;sys_scope display_value="GQI Queue Management"&gt;eae028e453723610dadf51a0a0490ec1&lt;/sys_scope&gt;&lt;sys_update_name&gt;sys_script_include_bd057017530f7210dadf51a0a0490ef4&lt;/sys_update_name&gt;&lt;sys_updated_by&gt;admin&lt;/sys_updated_by&gt;&lt;sys_updated_on&gt;2026-02-19 02:21:26&lt;/sys_updated_on&gt;&lt;/sys_script_include&gt;&lt;/record_update&gt;</payload>
+        <payload_hash>-1004465300</payload_hash>
+        <record_name>GQI_WalkupExtension</record_name>
+        <reverted_from/>
+        <source>17aa1d3253323210dadf51a0a0490e9a</source>
+        <source_table>sys_update_set</source_table>
+        <state>previous</state>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-19 02:21:27</sys_created_on>
+        <sys_id>ce05389f534f7210dadf51a0a0490e68</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_recorded_at>19c73b3c8310000001</sys_recorded_at>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-19 02:21:27</sys_updated_on>
+        <type>Script Include</type>
+        <update_guid>0605389f844f7210b7ed1c5e34d37468</update_guid>
+        <update_guid_history>0605389f844f7210b7ed1c5e34d37468:-1004465300</update_guid_history>
+    </sys_update_version>
+    <sys_metadata_delete action="INSERT_OR_UPDATE">
+        <sys_audit_delete/>
+        <sys_class_name>sys_metadata_delete</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-19 02:21:48</sys_created_on>
+        <sys_db_object display_value="" name="sys_script_include">sys_script_include</sys_db_object>
+        <sys_id>48a689230cfe4000b2ab7cd5b6334400</sys_id>
+        <sys_metadata>bd057017530f7210dadf51a0a0490ef4</sys_metadata>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>GQI_WalkupExtension</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_parent/>
+        <sys_policy/>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_scope_delete display_value="">4e63aabde42a4ec88ce3df04cb7adb24</sys_scope_delete>
+        <sys_update_name>sys_script_include_bd057017530f7210dadf51a0a0490ef4</sys_update_name>
+        <sys_update_version display_value="sys_script_include_bd057017530f7210dadf51a0a0490ef4">ce05389f534f7210dadf51a0a0490e68</sys_update_version>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-19 02:21:48</sys_updated_on>
+    </sys_metadata_delete>
+</record_update>
