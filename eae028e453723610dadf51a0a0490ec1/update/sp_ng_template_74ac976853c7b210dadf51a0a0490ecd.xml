@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_ng_template">
+    <sp_ng_template action="INSERT_OR_UPDATE">
+        <id>gqiHoursOfOperation</id>
+        <sp_widget display_value="GQI Walkup Location Select (LTU)">338357645387b210dadf51a0a0490ed8</sp_widget>
+        <sys_class_name>sp_ng_template</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-11 01:30:51</sys_created_on>
+        <sys_id>74ac976853c7b210dadf51a0a0490ecd</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>gqiHoursOfOperation</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sp_ng_template_74ac976853c7b210dadf51a0a0490ecd</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-11 01:30:51</sys_updated_on>
+        <template><![CDATA[<section class="hours-of-op" ng-class="{'location-content': c.data.enableOnlineCheckIn, 'location-content-landscape': !c.data.enableOnlineCheckIn}">
+  <h4 class="h4 padding-left" ng-if="c.locationLoaded && !c.isClosed(c.data.scheduleWidgets[0].data.schedule) && c.data.hasSchedule" aria-label="${Current and upcoming hours of operation}">
+    {{data.msgs.hoursMessage}}
+  </h4>
+  <h4 class="h4 padding-left" ng-if="c.locationLoaded && c.isClosed(c.data.scheduleWidgets[0].data.schedule) && c.data.hasSchedule" aria-label="${Upcoming hours of operation}">
+    {{data.msgs.closedHoursMessage}}
+    
+  </h4>
+
+  <div class="schedule-info padding-left padding-bottom" ng-if="c.data.hasSchedule">
+    <div class="schedule-entry" ng-if="!c.isClosed(c.data.scheduleWidgets[0].data.schedule)">
+      <div class="day-tag">
+        {{c.data.scheduleObj.today.day}}
+      </div>
+      <div class="schedule-tag">
+        <div ng-repeat="todayHour in c.data.scheduleObj.today.hours">
+          {{todayHour}}
+        </div>
+      </div>
+    </div>
+    
+    <div class="schedule-entry">
+      <div class="day-tag">
+        {{c.data.scheduleObj.nextAvail.day}}
+      </div>
+      <div class="schedule-tag">
+        <div ng-repeat="nextHour in c.data.scheduleObj.nextAvail.hours">
+          {{nextHour}}
+        </div>
+      </div>
+    </div>
+
+    <div class="disclaimer" >
+      {{c.data.scheduleWidgets[0].data.lastCheckInMsg}}
+    </div>
+  </div>
+
+</section>]]></template>
+    </sp_ng_template>
+</record_update>

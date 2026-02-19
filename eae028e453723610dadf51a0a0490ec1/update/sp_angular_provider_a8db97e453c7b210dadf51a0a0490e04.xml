@@ -1,0 +1,528 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_angular_provider">
+    <sp_angular_provider action="INSERT_OR_UPDATE">
+        <name>gqiWalkupQueue</name>
+        <script><![CDATA[(function($http, $interval, $timeout) {
+	// Queue state constants
+	var qState = {};
+	qState.wip = 'work_in_progress';
+	qState.newState = 'new';
+	qState.waiting = 'waiting';
+
+	// Size constants for waiting list
+	var HEAD_SIZE = 4;
+	var TAIL_SIZE = 2;
+	var MAX_SIZE = 6;
+
+	// Time option constants
+	var timeOptions = {};
+	timeOptions.none = '0';
+	timeOptions.timeCheckedIn = '1';
+	timeOptions.duration = '2';
+
+	var intervalController = {
+		promise: null,
+		updateWaitTime: function(locationTimeZone, listOne, listTwo) {
+			this.clearInterval();
+			this.promise = $interval(function(){
+				setQueueTime(locationTimeZone, listOne, timeOptions.duration);
+				if (listTwo)
+					setQueueTime(locationTimeZone, listTwo, timeOptions.duration);
+
+			}, 3000);
+		},
+		clearInterval: function() {
+			if (this.promise) {
+				$interval.cancel(this.promise);
+			}
+		}
+	}
+
+	function apptmntIntervalCtrl() {
+		var me = this;
+		var interval = 0;
+
+		me.fetchTimeout = undefined;
+		me.fetchInterval = undefined;
+
+		/**
+		 * Function to set the interval in minutes
+		 *
+		 * @param {number} m
+		 */
+		me.setIntervalTime = function(m) {
+			interval = m;
+		}
+		/**
+		 * Create an interval to fetch appointments every m minutes
+		 *
+		 * @param {Function} callback To run on each interval
+		 */
+		me.setInterval = function(callback) {
+			var datetime = new Date();
+			var currentMin = datetime.getMinutes();
+			var currentSec = datetime.getSeconds();
+			var ms = interval * 60000;
+
+			// Get the minutes until the next defined interval
+			var delay = interval - (currentMin % interval);
+			delay = delay * 60000 - (currentSec * 1000); // convert to MS
+
+			// Clear any current appointment timeouts or intervals
+			me.clearInterval();
+
+			// Set a timeout to run at the first m defined interval
+			me.timeout = $timeout(function() {
+				callback();
+
+				// Set a constant interval to run every m minutes after the first timeout
+				me.fetchInterval = $interval(function() {
+					callback();
+				}, ms);
+			}, delay);
+		};
+
+		/**
+		 * Clears the variables that hold the $timeout and $interval promises for appointments.
+		 */
+		me.clearInterval = function() {
+			// If timeout and interval is defined, clear those out
+			if (angular.isDefined(me.fetchTimeout)) {
+				$interval.cancel(me.fetchTimeout);
+				me.fetchTimeout = undefined;
+			}
+
+			if (angular.isDefined(me.fetchInterval)) {
+				$interval.cancel(me.fetchInterval);
+				me.fetchInterval = undefined;
+			}
+		}
+
+		return me;
+	}
+
+	/**
+	 * Calculates the current users position in the queue.
+	 * @param {array} head - list of users in the head of the list
+	 * @param {array} tail - list of users in the tail of the list
+	 * @param {number} tailOffset - The number of elements between the head and tail list
+	 *
+	 * @return {number} Current users position in the queue
+	 **/
+	function fetchQueuePosition(head, tail, tailOffset) {
+		var tailPosition = 0;
+		var headPosition = checkUserPosition(head);
+
+		// check if user is in the tail list, when not in the head list
+		if (!headPosition) {
+			tailPosition = checkUserPosition(tail);
+			return tailPosition === 0 ? 0 : tailOffset + (tailPosition - 1);
+		}
+		return headPosition;
+	}
+
+	/**
+	 * Checks the index of a user with the current attribute set to true
+	 * @param {array} list - list to check
+	 * @return {number} index of the element with attribute current = true
+	 **/
+	function checkUserPosition(list) {
+		if (list.length === 0) return 0;
+		var index = 0;
+		for (var person in list) {
+			index++;
+			if (list[person].current)
+				return index;
+		}
+		return 0;
+	}
+
+	/**
+	 * Format the currently waiting list into separate head an tail lists if the length
+	 * is greater than 6. Take into account of appointments, and have those elements display
+	 * at the beginning of the list.
+	 *
+	 * @param {array} head List of the first n elements
+	 * @param {array} tail List of the last m elements
+	 * @param {array} appointments List of appointments
+	 * @param {number} tailIndex Is the start index of where the tail list starts
+	 * @param {number} length Is the total length of elements
+	 */
+	function formatPartitionedList(head, tail, appointments, tailIndex, length) {
+		var h;
+		var t;
+		var result = {};
+		result.head = [];
+		result.tail = [];
+		result.tailIndex = tailIndex;
+		result.renderDivider = tail.length > 0;
+
+		// Set indexes for the head and tail list
+		head.forEach(function(item, index) {
+			item.index = index + 1;
+		});
+
+		tail.forEach(function(item, index) {
+			item.index = index + tailIndex;
+		});
+
+		// If there are no appointments then do not change the head and tail lists
+		if (appointments.length === 0) {
+			result.head = head;
+			result.tail = tail;
+			return result;
+		}
+
+		// Create the new head list with appointments in the front
+		var newHead = appointments.concat(head);
+
+		// Get user position in the head list. It will return 0 if user is not in the list
+		var userPosition = checkUserPosition(head);
+
+		// Case when tail exists and the current user does not exist in the head list
+		if (length > MAX_SIZE && userPosition <= 0 && tail.length === TAIL_SIZE) {
+			h = newHead.slice(0, HEAD_SIZE);
+
+			result.head = h;
+			result.tail = tail;
+			result.renderDivider = true;
+		}
+		// When newly formed head list is smaller then the max size
+		else if (newHead.length <= MAX_SIZE) {
+			result.head = newHead;
+			result.renderDivider = false;
+		}
+		// Newly formed head list is greater than max size
+		else {
+			h = newHead.slice(0, MAX_SIZE);
+			// First check if the current user is within max size of the new head list
+			if (checkUserPosition(h) > 0) {
+				result.head = h;
+				result.renderDivider = false;
+			}
+			else {
+				t = newHead.slice(HEAD_SIZE);
+
+				result.tail = storeTail(t, checkUserPosition(t), TAIL_SIZE);
+				result.head = newHead.slice(0, HEAD_SIZE);
+				result.renderDivider = true;
+			}
+		}
+
+		return result;
+	}
+
+	/**
+	 * Helper for the formatPartitionedList function. Will create a new list with a length of size
+	 * that contains the element at the specified position.
+	 *
+	 * @param {array} list
+	 * @param {number} position of the element to be contained in the list
+	 * @param {size} size of the returned list
+	 * @return {array} a list of length size
+	 */
+	function storeTail(list, position, size) {
+		var result = [];
+
+		// When there is a position to look for in the list
+		if (position > 0) {
+			for (var i = 0, len = list.length; i < len; i++) {
+				result.push(list[i]);
+				// When length is size and the item at position has been stored in the list
+				if (result.length === size && i >= position-1)
+					return result;
+
+				else if (result.length === size)
+					result.shift();
+			}
+		}
+		// When no position is defined, take the last n elements of the list
+		else
+			result = list.slice(0 - size);
+
+		return result;
+	}
+
+	/**
+	 * Format in hrs and minutes the duration waited for a user in the queue.
+	 * @param {string} createdOn - Glidedate time of when the record was created.
+	 * @return {string} Formatted duration string.
+	 **/
+	function formatTimeDuration(createdOn) {
+		var timeCreated = moment.utc(createdOn);
+		var today = moment.utc();
+
+		var duration = moment.duration(today.diff(timeCreated));
+
+		var hours = duration.hours();
+		var minutes  = duration.minutes();
+		var hourString = '';
+		var minuteString = '';
+
+		if (hours > 0)
+			hourString = hours + ' hr ';
+
+		if (hours === 0 && minutes < 1)
+			minuteString = '< 1 min';
+		else if (minutes !== 0)
+			minuteString = minutes + ' min';
+
+		return hourString + minuteString;
+	}
+
+	/**
+	 * Add a formatted appointment time attribute to all appointments in the list
+	 * to display on the queue.
+	 *
+	 * @param apppointments {Array<Object>} List of appointments
+	 * @return appointments {Array<Object>} List of appointments with a formatted time
+	 */
+	function formatAppointmentTime(locationTimeZone, appointments) {
+		if (angular.isUndefined(appointments) || appointments === null)
+			return [];
+
+		appointments.forEach(function(item) {
+			item.isAppointment = true;
+			if (locationTimeZone) {
+				item.apptmntTime = moment(item.time).tz(locationTimeZone).format('hh:mma');
+			} else  {
+				item.apptmntTime = moment(item.time).format('hh:mma');
+			}
+		});
+
+		return appointments;
+	}
+
+	/**
+	 * Set the time format based on the wait time options.
+	 * @param {Object[]} queueList - List of records to be displayed in the queue.
+	 * @param {string} waitTimeOptions - configured wait time option.
+	 **/
+	function setQueueTime(locationTimeZone, queueList, waitTimeOptions) {
+		var waitingList = [];
+		var time;
+
+		switch (waitTimeOptions) {
+			case timeOptions.timeCheckedIn:
+				waitingList = queueList.map(function(item) {
+					if (!item.isAppointment) {
+						if (locationTimeZone){
+							time = moment(item.timeIn).tz(locationTimeZone).format('hh:mma');
+						} else  {
+							time = moment(item.timeIn).format('hh:mma');
+						}
+						item.timeWaited = time;
+					}
+					return item;
+				});
+				break;
+
+			case timeOptions.duration:
+				waitingList =  queueList.map(function(item) {
+					if (!item.isAppointment)
+						item.timeWaited = formatTimeDuration(item.sysCreatedOn);
+
+					return item;
+				});
+				break;
+
+			default:
+				waitingList = queueList.slice();
+				break;
+		}
+
+		return waitingList;
+	}
+
+	/**
+	 * Fetches list of users to be used on the on-site queue.
+	 * @param {string} locationId - sysId of the walk-up location.
+	 * @param {string} state - the state of the records we want to return.
+	 * @param {Function} setScope - callback function to set the scope of data returned from the server
+	 * @param {string} waitTimeOptions - configured wait time option
+	 * @param {number} limit - Number of results to limit
+	 **/
+	function fetchOnsiteQueue(locationTimeZone, locationId, state, setScope, waitTimeOptions, limit, includeAppointments) {
+		// var url = '/api/sn_walkup/walk_up/queue/all/' +
+		// 	locationId +
+		// 	'?queueState=' + state +
+		// 	'&appointments=' + includeAppointments;
+
+		// if (limit)
+		// 	url += '&limit=' + limit;
+		var url = '/api/x_80404_gqi_walkup/public_api/fetch_onsite_queue/' + locationId;
+		var queryParams = {
+			params: {
+                state: state,
+                includeAppointments: includeAppointments,
+				limit : limit
+            }
+		};
+		
+		$http.get(url, queryParams).then(function(response) {
+			var list = [];
+			var appointments = [];
+			var waitingList = [];
+
+			var data = response.data.result;
+			waitingList = setQueueTime(locationTimeZone, data.list, waitTimeOptions);
+			if (waitTimeOptions === timeOptions.duration)
+				intervalController.updateWaitTime(locationTimeZone, waitingList);
+
+			if (!angular.isUndefined(data.appointments) || data.appointments !== null)
+				appointments = formatAppointmentTime(locationTimeZone, data.appointments);
+
+			list = appointments.concat(waitingList);
+			var callbackData = {
+				list: list
+			};
+
+			setScope(callbackData);
+		});
+	}
+
+	/**
+	 * Fetches the currently serviced list of users in the walk-up queue.
+	 * @param {string} locationId - sysId of the walk-up location
+	 * @param {Function} setScope - callback function to set the scope of data returned from the server
+	 **/
+	function fetchOnlineServiced(locationTimeZone, locationId, setScope) {
+		// var url = '/api/sn_walkup/walk_up/queue/all/' +
+		// 	locationId +
+		// 	'?queueState=' +
+		// 	qState.wip;
+        var url = '/api/x_80404_gqi_walkup/public_api/fetch_online_serviced/' + locationId;
+		var queryParams = {
+			params: {
+                state: qState.wip,
+            }
+		}
+		$http.get(url,queryParams).then(function(response) {
+			var nowServing = response.data.result.list;
+			var isUserServiced =
+				checkUserPosition(nowServing) > 0 ?
+				true :
+			false;
+
+			var callbackData = {
+				nowServing: nowServing,
+				isUserServiced: isUserServiced
+			};
+
+			setScope(callbackData);
+		});
+	}
+
+	/**
+	 * Fetches the currently waiting list of users in the walk-up queue.
+	 * @param {string} locationId - sysId of the walk-up location
+	 * @param {boolean} includeAppointments Flag to include appointments
+	 * @param {Function} setScope - callback function to set the scope of data returned from the server
+	 **/
+	function fetchOnlineWaiting(locationTimeZone, locationId, includeAppointments, setScope) {
+		var url = '/api/x_80404_gqi_walkup/public_api/'+ locationId +'/'+qState.waiting+'/'+ includeAppointments;
+
+		$http.get(url).then(function(response) {
+			var data = response.data.result;
+			var length = data.length;
+			var tailStart = data.tailIndex;
+			var userPosition = fetchQueuePosition(data.head, data.tail, tailStart);
+			var waitTime = data.timeOptions;
+			var headList = setQueueTime(locationTimeZone, data.head, waitTime);
+			var tailList = setQueueTime(locationTimeZone, data.tail, waitTime);
+			var waitOption = {};
+
+			if (waitTime === timeOptions.duration) {
+				intervalController.updateWaitTime(locationTimeZone, headList, tailList);
+				waitOption.duration = true;
+			}
+			else if (waitTime === timeOptions.timeCheckedIn)
+				waitOption.timeCheckedIn = true;
+			else
+				waitOption.none = true;
+
+			var appointments = formatAppointmentTime(locationTimeZone, data.appointments);
+			var res = formatPartitionedList(headList, tailList, appointments, tailStart, length);
+
+			var callbackData = {
+				head: res.head,
+				tail: res.tail,
+				tailStart: res.tailIndex,
+				userPosition: userPosition,
+				shouldRenderDivider: res.renderDivider,
+				waitOption: waitOption
+			};
+			setScope(callbackData);
+		});
+	}
+
+	/**
+	 * Fetch upcomming walk-up appointments
+	 *
+	 * @param locationId {string} - The sys_id of the walk-up location queue
+	 * @param callback {Function} - Callback to execute on the data received
+	 */
+	function fetchAppointments(locationTimeZone, locationID, callback) {
+		var requestUrl = '/api/x_80404_gqi_walkup/public_api/getAppointments/';
+		$http.get(requestUrl + locationID).then(function(response) {
+			var data = response.data.result;
+			data = formatAppointmentTime(locationTimeZone, data);
+			callback(data);
+		});
+	}
+
+	/**
+	 * Fetch the waiting list for the on-site queue.
+	 * @param locationId {string} - sys_id of the wu_location_queue table
+	 * @param waitTime {string} - how to render the wait time to the user
+	 * @param setScope {Function} - call back function
+	 */
+	function fetchOnsiteWaiting(locationTimeZone, locationId, waitTime, includeApptmnts, setScope) {
+		fetchOnsiteQueue(locationTimeZone, locationId, qState.waiting, setScope, waitTime, false, includeApptmnts);
+	}
+
+	/**
+	 * Fetch the current serving list for the on-site queue.
+	 * @param locationId {string} - sys_id of the wu_location_queue table
+	 * @param setScope {Function} - call back function
+	 */
+	function fetchOnsiteServiced(locationTimeZone, locationId, setScope) {
+		fetchOnsiteQueue(locationTimeZone, locationId, qState.wip, setScope, false, false, false);
+	}
+
+	/**
+	 * Fetch information from a specific interaction record.
+	 * @param sysId - The sys_id of the interaction record.
+	 * @param callback - Function to execute on the returned data.
+	 */
+	function fetchSingleWalkUp(recordId, callback) {
+		$http.get('/api/sn_walkup/walk_up/record/' + recordId).then(function(response) {
+			callback(response.data.result);
+		});
+	}
+
+	return {
+		apptmntIntervalCtrl: apptmntIntervalCtrl,
+		fetchAppointments: fetchAppointments,
+		fetchOnlineServiced: fetchOnlineServiced,
+		fetchOnlineWaiting: fetchOnlineWaiting,
+		fetchOnsiteServiced: fetchOnsiteServiced,
+		fetchOnsiteWaiting: fetchOnsiteWaiting,
+		fetchSingleWalkUp: fetchSingleWalkUp,
+		setQueueTime: setQueueTime
+	};
+});]]></script>
+        <sys_class_name>sp_angular_provider</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-11 01:27:11</sys_created_on>
+        <sys_id>a8db97e453c7b210dadf51a0a0490e04</sys_id>
+        <sys_mod_count>3</sys_mod_count>
+        <sys_name>gqiWalkupQueue</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sp_angular_provider_a8db97e453c7b210dadf51a0a0490e04</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-11 02:33:03</sys_updated_on>
+        <type>service</type>
+    </sp_angular_provider>
+</record_update>

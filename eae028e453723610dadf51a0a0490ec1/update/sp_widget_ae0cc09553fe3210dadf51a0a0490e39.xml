@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[api.controller=function($location) {
+  /* widget controller */
+  var c = this;
+	console.log('loc ' ,$location.search())
+	
+};]]></client_script>
+        <controller_as>c</controller_as>
+        <css>.box{
+  border: 20px
+  
+}</css>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description/>
+        <docs/>
+        <field_list>short_description</field_list>
+        <has_preview>true</has_preview>
+        <id/>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {
+  
+}]]></link>
+        <name>GQI Walkup Location Select</name>
+        <option_schema>[{"hint":"panel color","name":"color","section":"other","default_value":"","label":"Panel Color","type":"choice","choices":[{"label":"primary","value":"primary"},{"label":"success","value":"success"},{"label":"info","value":"info"},{"label":"warning","value":"warning"},{"label":"danger","value":"danger"}]}]</option_schema>
+        <public>false</public>
+        <roles/>
+        <script><![CDATA[(function() {
+  /* populate the 'data' object */
+  /* e.g., data.table = $sp.getValue('table'); */
+  options.color = options.color || 'primary';
+})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-01-31 07:59:20</sys_created_on>
+        <sys_id>ae0cc09553fe3210dadf51a0a0490e39</sys_id>
+        <sys_mod_count>50</sys_mod_count>
+        <sys_name>GQI Walkup Location Select</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sp_widget_ae0cc09553fe3210dadf51a0a0490e39</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-03 08:26:04</sys_updated_on>
+        <template><![CDATA[<div class="panel panel-{{options.color}}">
+  <div class="panel-heading"> SELECT WALKUP LOCATION </div>
+    <div class="panel-body">
+      <gqi-walkup-location-picker tablename='wu_location_queue'></gqi-walkup-location-picker>
+
+  </div>
+</div>]]></template>
+    </sp_widget>
+</record_update>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_package_dependency_m2m">
+    <sys_package_dependency_m2m action="INSERT_OR_UPDATE">
+        <dependency display_value="Walk-up Experience" source="sn_walkup">1da803b9b3b10300f686a72256a8dcbc</dependency>
+        <min_version>1.15.5</min_version>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-19 03:05:41</sys_created_on>
+        <sys_id>b12f7c5753cf7210dadf51a0a0490eb7</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-19 03:05:41</sys_updated_on>
+    </sys_package_dependency_m2m>
+</record_update>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ws_operation">
+    <sys_ws_operation action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <consumes>application/json,application/xml,text/xml</consumes>
+        <consumes_customized>false</consumes_customized>
+        <default_operation_uri/>
+        <enforce_acl/>
+        <http_method>GET</http_method>
+        <name>Get Walkup Queues</name>
+        <operation_script><![CDATA[(function process( /*RESTAPIRequest*/ request, /*RESTAPIResponse*/ response) {
+
+ var campus = request.queryParams.campus_location_id;
+    var grWLQ = new GlideRecord('wu_location_queue');
+    grWLQ.addEncodedQuery('x_80404_gqi_queu_0_walkup_campus=' + campus);
+    grWLQ.orderBy('order');
+    grWLQ.query();
+    var queues = [];
+    while (grWLQ.next()) {
+        queues.push({
+            sys_id: grWLQ.sys_id.toString(),
+            name: grWLQ.name.toString()
+        });
+    }
+    return queues;
+
+})(request, response);]]></operation_script>
+        <operation_uri>/api/x_80404_gqi_walkup/public_api/get_queues</operation_uri>
+        <produces>application/json,application/xml,text/xml</produces>
+        <produces_customized>false</produces_customized>
+        <relative_path>/get_queues</relative_path>
+        <request_example/>
+        <requires_acl_authorization>true</requires_acl_authorization>
+        <requires_authentication>true</requires_authentication>
+        <requires_snc_internal_role>true</requires_snc_internal_role>
+        <short_description/>
+        <sys_class_name>sys_ws_operation</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-11 02:26:54</sys_created_on>
+        <sys_id>72592b64534bb210dadf51a0a0490ecc</sys_id>
+        <sys_mod_count>2</sys_mod_count>
+        <sys_name>Get Walkup Queues</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy>protected</sys_policy>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sys_ws_operation_72592b64534bb210dadf51a0a0490ecc</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-19 03:14:57</sys_updated_on>
+        <web_service_definition display_value="GQI Walkup APIs for Public">b2f3ab68530bb210dadf51a0a0490e1c</web_service_definition>
+        <web_service_version/>
+    </sys_ws_operation>
+</record_update>

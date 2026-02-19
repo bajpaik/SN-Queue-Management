@@ -1,0 +1,899 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[api.controller = function($scope, $http, spUtil, i18n, spModal, $location, $window, $interval, $uibModal, $timeout, walkupKeepAlive, snAnalytics) {
+
+    // Add this class to the body tag. Allows us to overwrite the select2 dropdown style.
+    document.body.classList.add("select2-tablet");
+    var c = this;
+
+    var urlParams = $location.search();
+    var CURRENT_PAGE = 'CHECK_IN';
+    var OTHER_OPTION = '0';
+    var awayImage = c.options.away_image;
+    var awayMessage = c.options.away_message;
+    var closedMessage = c.options.closed_message;
+
+    var confirmationMsg = '';
+    var promptMsg = '';
+    c.isDisabled = false;
+
+
+
+    // Initialize
+    initializePage(c.data.queueId);
+    if (c.data.queueId) {
+        // Listen only to interaction changes for the current queue
+        spUtil.recordWatch($scope, 'interaction', 'location=' + c.data.queueLocation_Id, function(result) {
+            if (!result.data.sys_id)
+                return false;
+
+            var changes = result.data.changes;
+
+            // If there are no changes or there is no state change exit out
+            if (!changes || changes.length === 0 || changes.indexOf('state') === -1)
+                return false;
+
+            if (c.data.config.showWaitTime)
+                getWaitTime(c.data.queueId);
+
+
+        });
+    }
+
+
+    // Call schedule widget
+    // spUtil.get('walk-up-schedule', { page: CURRENT_PAGE }).then(function(response) {
+    // 	c.data.scheduleWidget = response;
+    // });
+
+    // Field change event for <sn-record-picker> directive.
+    // $scope.$on("field.change", function(evt, parms) {
+    // 	c.data.userSysId = parms.newValue;
+    // });
+
+    // Automatically focus on the short description text area when the other selection is selected
+    c.onOptionClick = function(selectedOption, userType, elementId) {
+        for (var i = 0; i < c.data.issueChoices.length; i++) {
+            if (c.data.issueChoices[i].value === selectedOption) {
+                if (userType === 'emp') {
+                    c.data.showEmployeeTextArea = c.data.issueChoices[i].display_text_area;
+                } else {
+                    c.data.showGuestTextArea = c.data.issueChoices[i].display_text_area;
+                }
+            }
+        }
+        if (c.data.showEmployeeTextArea || c.data.showGuestTextArea) {
+            var textArea = document.getElementById(elementId);
+            $timeout(function() {
+                if (textArea) {
+                    document.activeElement.blur();
+                    textArea.focus();
+                }
+            }, 0);
+        }
+    }
+
+    // Schedule widget - controls whether or not to show form
+    c.showCheckIn = function(schedule) {
+        if (schedule === undefined)
+            return false;
+
+        return (schedule.isCheckInOpen && !schedule.enableAway && c.data.queueId);
+    }
+
+    // Logic for disabling checkin button based on other input field.
+    // c.empCheckinBtnDisabled = function() {
+    // 	if (c.isDisabled)
+    // 		return true;
+    // 	else if (c.data.showEmployeeTextArea && !c.data.otherIssue)
+    // 		return true;
+    // 	else if (!c.data.userSysId || !c.data.selectedIssue)
+    // 		return true;
+    // }
+
+
+    // Disable guest checkin button if any of the fields are empty.
+    c.guestCheckinBtnDisabled = function() {
+        if (c.isDisabled)
+            return true;
+        if (c.data.showGuestTextArea && !c.data.otherGuestIssue)
+            return true;
+        else if (!c.data.guestName || !c.data.guestEmail || !c.data.selectedGuestIssue || (!c.guestHasPhone && !c.data.guestPhone))
+            return true;
+
+    }
+
+    // Validate guest email. Renders invalid email label if the user input is not a valid email
+    c.validateEmail = function(invalid) {
+        if (!invalid)
+            return c.data.msgs.guestEmailMsg;
+
+        return c.data.msgs.invalidEmail;
+    }
+
+    // Validate guest phone number. Renders invalid phone label if the user input is not a valid phone
+    c.validatePhone = function(invalid) {
+        if (!invalid)
+            return c.data.msgs.guestPhoneMsg;
+
+        return c.data.msgs.invalidPhone;
+    }
+    // Used on the modal templates to close the modal, and clear the state of the form
+    c.closeModal = function() {
+        if (!c.modalInstance)
+            return false;
+        c.modalInstance.close();
+    }
+
+    // c.submitEmployeeRequest = function() {
+
+    // 	c.isDisabled = true;
+    // 	c.data.action = c.data.user.employee;
+    // 	//Post this.data to the Server Script.
+    // 	c.server.update().then(function() {
+    // 		c.data.action = undefined;
+    // 		if (c.data.error) {
+    // 			spUtil.addErrorMessage(c.data.msgs.errorMsg);
+    // 		} else if (c.data.isPresentInDiffQueue) {
+    // 			promptUser();
+    // 		} else if (c.data.recordFound) {
+    // 			renderDuplicateModal();
+    // 		} else if (c.data.newInteraction) {
+    // 			notifyUser();
+    // 			snAnalytics.addEvent({
+    // 				"name": "Walk-up Onsite Check-in",
+    // 				"data" : {
+    // 					"isGuest": "false",
+    // 					"portal": c.data.portalSuffix,
+    // 					"hasAdditionalDetails": c.data.otherIssue != "" && c.data.otherIssue != null
+    // 				}
+    // 			});
+    // 			//Get the latest computed wait time
+    // 			if(c.data.config.showWaitTime) {
+    // 				c.server.get({
+    // 					action: c.data.userAction.fetchWaitTime,
+    // 					location: c.data.queueId,
+    // 					includeQueueLength: true
+    // 				}).then(function(response) {
+    // 					c.data.waitTime = response.data.waitTime;
+
+    // 				});
+    // 			}
+
+    // 		}
+    // 	});
+
+
+    // }
+
+    c.submitGuestRequest = function() {
+        c.isDisabled = true;
+        c.data.action = c.data.user.guest;
+        c.server.update().then(function() {
+            if (c.data.guestRecordFound) {
+                renderDuplicateModal();
+            } else if (c.data.guestRecordCreated) {
+                notifyUser();
+                snAnalytics.addEvent({
+                    "name": "Walk-up Onsite Check-in",
+                    "data": {
+                        "isGuest": "true",
+                        "portal": c.data.portalSuffix,
+                        "hasAdditionalDetails": c.data.otherGuestIssue != "" && c.data.otherGuestIssue != null
+                    }
+                });
+            }
+        });
+    }
+
+    // Populate list of reasons and queue threshold from server
+    function initializePage(queueId) {
+        if (queueId) {
+
+            //Get the latest computed wait time
+            if (c.data.config.showWaitTime) {
+                c.server.get({
+                    action: c.data.userAction.fetchWaitTime,
+                    location: queueId,
+                    includeQueueLength: true
+                }).then(function(response) {
+                    c.data.waitTime = response.data.waitTime;
+                    showWaitTimeMsg(c.data.waitTime);
+                });
+
+                watchWaitTime(queueId);
+            }
+
+
+            // Initial check to see if the location is a valid location
+            if (!c.data.isValidLocation)
+                $location.search('location_id', null);
+
+            var keepAliveInterval = c.data.keepAliveTimeout;
+            walkupKeepAlive.keepAlive(keepAliveInterval);
+
+            c.data.issueChoices = c.data.reasonList;
+            c.data.queue_threshold = c.data.queue_threshold;
+
+            // Configurations to enable employee or external user support
+            c.formOptions = {
+                enableEmployeeSupport: c.data.config.enableEmployee,
+                enableExternalSupport: c.data.config.enableGuest
+            };
+
+            c.welcomeMessage = c.data.config.welcomeMessage;
+            c.guestHasPhone = false;
+            // Toggle guest check in and employee check in pages
+            c.showDiv = {
+                toggle: false
+            };
+            if (c.formOptions.enableExternalSupport)
+                c.showDiv.toggle = true;
+
+            initializePhoneInput();
+            // Default to show the guest user form when enable employee is false
+            // if (!c.formOptions.enableEmployeeSupport)
+            // 	c.showDiv.toggle = true;
+
+            // Only when employee support is enabled, reset to employee form upon submission
+            //if (c.formOptions.enableEmployeeSupport)
+            //c.showDiv.toggle = false;
+
+        }
+    }
+
+    function showWaitTimeMsg(waitTime) {
+        i18n.getMessage('The current estimated wait time is {0} min', function(msg) {
+            c.waitTimeMessage = msg.withValues([waitTime]);
+        })
+    }
+
+    function showYourWaitTimeMsg(waitTime) {
+        i18n.getMessage('Your estimated wait time is {0} min', function(msg) {
+            c.yourWaitTimeMessage = msg.withValues([waitTime]);
+        });
+    }
+
+    function watchWaitTime(locationId) {
+        var changeFound;
+        // Record watch for wu_location_queue
+        spUtil.recordWatch($scope, 'wu_location_queue', 'sys_id=' + locationId, function(name) {
+            var data = name.data;
+            for (var i = 0, len = data.changes.length; i < len; i++) {
+                if (data.changes[i] === 'average_wait_time') {
+                    changeFound = true;
+                } else {
+                    changeFound = false;
+                }
+            }
+            if (changeFound) {
+                getWaitTime(locationId);
+            }
+        });
+    }
+
+    //Get wait time from the queue.
+    function getWaitTime(locationId) {
+        c.server.get({
+            action: c.data.userAction.fetchWaitTime,
+            location: locationId,
+            includeQueueLength: true
+        }).then(function(response) {
+            c.data.waitTime = response.data.waitTime;
+            showWaitTimeMsg(c.data.waitTime);
+        });
+    }
+
+
+    // When user attempts to change into a new queue
+    // Displays a prompt for user input and then show confirmation msg based on input received.
+    function promptUser() {
+        c.modalInstance = $uibModal.open({
+            templateUrl: 'gqiChangeQueueModal',
+            scope: $scope,
+            controller: function($scope, $uibModalInstance) {
+                $scope.dismissModal = function() {
+                    $uibModalInstance.close();
+                    clearFields();
+                };
+            }
+        });
+
+        c.modalInstance.result.then(function() {}, function() {
+            clearFields();
+        });
+
+        c.changeToCurrentQueue = function() {
+            c.modalInstance.close();
+            c.data.agree = true;
+            c.server.update().then(function() {
+                notifyUser(c.modalInstance);
+            });
+        }
+
+        c.dismiss = function() {
+            c.modalInstance.dismiss();
+        };
+    }
+
+    // Displays a confirmation message to the user.
+    function notifyUser() {
+        var currentTime = new Date();
+        c.checkInTime = currentTime.toLocaleString('en-US', {
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: true
+        });
+
+        if (c.data.specificNotification && c.data.queue_threshold && c.data.queue_threshold !== "0") {
+            i18n.getMessage('You will be notified when you are #{0} in the queue.', function(msg) {
+                c.modalMessage = msg.withValues([c.data.queue_threshold]);
+            });
+        } else {
+            i18n.getMessage('in the queue and you will be notified when you are up next.', function(msg) {
+                c.modalMessage = msg;
+            });
+        }
+
+        c.usersWaitTime = c.data.waitTime;
+        showYourWaitTimeMsg(c.usersWaitTime);
+
+        c.modalInstance = $uibModal.open({
+            templateUrl: 'gqiConfirmationModal',
+            scope: $scope,
+            controller: function($scope, $uibModalInstance) {
+                $scope.dismissModal = function() {
+                    $uibModalInstance.close();
+                };
+            }
+        });
+
+        // Set modal to automatically close after 20 seconds
+        setTimeoutToCloseModal(c.modalInstance, 20000);
+
+        c.modalInstance.closed.then(function() {
+            clearFields();
+        });
+    }
+
+    // Displays to the user that they are attempting to create a duplicate entry.
+    function renderDuplicateModal() {
+        c.modalInstance = $uibModal.open({
+            templateUrl: 'gqiDuplicateUserModal',
+            scope: $scope,
+            controller: function($scope, $uibModalInstance) {
+                $scope.dismissModal = function() {
+                    $uibModalInstance.close();
+                };
+            }
+        });
+
+        // Set modal to automatically close after 8 seconds
+        setTimeoutToCloseModal(c.modalInstance, 8000);
+
+        c.modalInstance.closed.then(function() {
+            clearFields();
+        });
+    }
+
+    /**
+     * Handles closing the modal instance after a specified amount of time has passed.
+     */
+    function setTimeoutToCloseModal(modalInstance, time) {
+        if (!modalInstance)
+            return false;
+
+        $timeout(function() {
+            modalInstance.close();
+        }, time);
+    }
+
+    function initializePhoneInput() {
+        $timeout(function() {
+            var phoneInput = document.getElementById("phone");
+            if (phoneInput) {
+                var iti = intlTelInput(phoneInput, {
+                    initialCountry: "au",
+                    preferredCountries: ['au', 'us'],
+                    separateDialCode: true
+                });
+
+                phoneInput.addEventListener('countrychange', function() {
+                    var internationalCode = iti.getSelectedCountryData();
+                    $scope.$apply(function() {
+                     //   c.data.selectedIntTelCode = internationalCode;
+                        c.data.guestPhone = iti.getNumber();
+                    });
+                });
+                // Update model when input changes
+                phoneInput.addEventListener('input', function() {
+                    $scope.$apply(function() {
+                        c.data.guestPhone = iti.getNumber();
+                    });
+                });
+            }
+        }, 0);
+    }
+    // Clean the state of the widget after a submission
+    function clearFields() {
+        c.isDisabled = false;
+        c.data.guestEmail = '';
+        c.data.guestName = '';
+        c.data.guestPhone = '';
+        c.data.selectedIssue = '';
+        c.data.selectedGuestIssue = '';
+        c.data.otherGuestIssue = '';
+        c.data.otherIssue = '';
+        c.data.isPresentInDiffQueue = false;
+        c.data.guestRecordCreated = false;
+        c.data.specificNotification = false;
+        c.data.newInteraction = false;
+        c.data.recordFound = false;
+        c.data.currentRec = 0;
+        c.data.userSysId = '';
+        c.data.guestRecordFound = false;
+        c.data.action = '';
+        c.data.error = false;
+        c.data.agree = false;
+        c.data.showEmployeeTextArea = false;
+        c.data.showGuestTextArea = false;
+
+        c.data.empName = {
+            displayValue: '',
+            value: '',
+            name: 'empName'
+        };
+    }
+}]]></client_script>
+        <controller_as>c</controller_as>
+        <css>.phone-checkbox{&#13;
+ label{&#13;
+    margin-top: 8px;&#13;
+  }&#13;
+ input[type='checkbox']{&#13;
+  cursor:pointer;&#13;
+  width: 20px;&#13;
+  height: 20px;&#13;
+  &amp;:focus,&#13;
+  &amp;:active{&#13;
+    outline:none; &#13;
+  }&#13;
+}&#13;
+}&#13;
+</css>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description/>
+        <docs/>
+        <field_list/>
+        <has_preview>true</has_preview>
+        <id>gqi-walkup-checkin</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {
+  
+}]]></link>
+        <name>GQI Guest Walk-up Check-In</name>
+        <option_schema>[{"hint":"Primary field displayed on onsite check-in lookup.","name":"primary_display_field","section":"Data","default_value":"name","label":"Primary Display Field","type":"choice","choices":[{"label":"Name","value":"name"},{"label":"Email","value":"email"}]}]</option_schema>
+        <public>true</public>
+        <roles/>
+        <script><![CDATA[(function() {
+
+	var userId, userIssue, issueId;
+	var otherIssue = "";
+	var guestName, guestEmail, guestIssue, guestIssueId, guestPhone;
+	var otherGuestIssue = "";
+
+	// Authentication
+	// data.isAuthorizedUser = new sn_walkup.ExtPointUtil()
+	// 	.loadExtension("WalkUpUtil")
+	// 	.isAuthorized(gs.getUser())
+	// ;
+
+	data.homeRoute = '/';
+	data.portalSuffix = $sp.getPortalRecord().getValue("url_suffix");
+
+	//Declare messages here
+	var m = data.msgs = {};
+	m.selectMsg = gs.getMessage('--Select--');
+	m.submitMsg = gs.getMessage('Check in');
+	m.dismissModal = gs.getMessage('Dismiss modal');
+	m.dialogOk = gs.getMessage('Ok');
+	m.returnToScreen = gs.getMessage('Return to main screen');
+	m.agreeMsg = gs.getMessage('I still want to join this queue');
+	m.disagreeMsg = gs.getMessage('I want to stay in the other queue');
+	m.dialogCancel = gs.getMessage('Cancel');
+	m.guestLink = gs.getMessage('Cannot find your name or email?');
+	m.employeeLink = gs.getMessage('I am a registered user');
+	m.invalidEmail = gs.getMessage('Please enter a valid email');
+	m.invalidPhone = gs.getMessage('Phone number invalid');
+	m.userHasPhoneMsg = gs.getMessage("Skip phone");
+	m.issueMsg = gs.getMessage('Reason for visit');
+	m.empNameMsg = gs.getMessage('Enter your name or email');
+	m.differentQueueMsgOne = gs.getMessage('Looks like you are in a different queue.');
+	m.differentQueueMsgTwo = gs.getMessage('Do you want to leave the other queue and join this queue location? If so, you will be placed at the end of the queue.');
+	m.duplicateRecordMsgOne = gs.getMessage('Looks like you are already in the queue.');
+	m.duplicateRecordMsgTwo = gs.getMessage('Someone will help you shortly.');
+	m.queueChangeMsg = gs.getMessage('Thank you for checking in. You have been added to the current queue.');
+	m.confirmMsgOne = gs.getMessage('Thanks for checking in!');
+	m.confirmMsgTwo = gs.getMessage('You are...');
+	m.confirmMsgThree = gs.getMessage('You checked in at');
+	m.errorMsg = gs.getMessage('Sorry, looks like something went wrong. Please check the logs.');
+	m.empNameLabel = gs.getMessage('Employee');
+	m.issueDropdownMsg = gs.getMessage('Select your issue');
+	m.guestNameMsg = gs.getMessage('Full Name');
+	m.guestEmailMsg = gs.getMessage('Email');
+	m.guestPhoneMsg = gs.getMessage('Phone');
+	m.guestPhoneHelpMsg = gs.getMessage('Include country code (e.g., +61123456789)');
+	m.otherfieldMsg = gs.getMessage('Short Description');
+	m.issueLabel = gs.getMessage('Select reason for visit');
+	m.guestNameLabel = gs.getMessage('Guest name');
+	m.guestEmailLabel = gs.getMessage('Guest email');
+	m.textAreaLabel = gs.getMessage('Short description');
+	m.otherChoice = gs.getMessage('Other');
+	m.estimatedMsg = gs.getMessage('Current estimated wait time:');
+	m.customEstimatedMsg = gs.getMessage('Your estimated wait time is');
+	m.waitMin = gs.getMessage('minute');
+	m.asterisk = gs.getMessage('asterisk');
+	m.indicatesRequired = gs.getMessage("Indicates required");
+
+	var u = data.user = {};
+	u.employee = 'employee';
+	u.guest = 'guest';
+
+	var a = data.userAction = {};
+	a.getConfig = 'GET_CONFIG';
+	a.fetchWaitTime = 'FETCH_WAIT_TIME';
+
+	//Define variables that are used in GlideRecord query here
+	var INTERACTION_TYPE = 'walkup';
+	var GUEST_SYS_ID = '5136503cc611227c0183e96598c4f706'; //sys_id of default guest user.
+	var NEW = 'new';
+	var WORK_IN_PROGRESS = 'work_in_progress';
+	var CLOSED_ABANDONED = 'closed_abandoned';
+	var ON_HOLD = 'on_hold';
+
+	//Get lookup display config from widget option schema and show the fields accordingly.
+	if (options.primary_display_field === 'email') {
+		data.primaryDisplay = 'email';
+		data.secondaryDisplay = 'name';
+	} else  {
+		data.primaryDisplay = 'name';
+		data.secondaryDisplay = 'email';
+	}
+
+	//InteractionFacade created as part of the script include will be used to create interactions as well as creating wu_context.
+	var facade = new sn_walkup.ExtPointUtil().loadExtension("InteractionFacade");
+	var gqi_facade = new GQI_WalkupHelper();
+
+	var is_online_checkin = false;
+
+	//Util used to get location related configs
+	var util = new sn_walkup.ExtPointUtil().loadExtension("WalkUpUtil");
+
+	// Get configuration for this location
+	var queueId = $sp.getParameter('location_id');
+	data.queueLocation_Id = facade.getQueueLocation(queueId);
+
+	if (input) {
+		data.config = getConfigurations(queueId);
+
+		// Assign user data received from client controller to server script variables.
+		if (input.userSysId !== null && input.userSysId !== '') {
+			userId = input.userSysId;
+		}
+
+		if (input.action === a.getConfig) {
+			data.reasonList = gqi_facade.fetchReasonConfig(queueId);
+			data.queue_threshold = getNotificationThreshold(queueId);
+			data.keepAliveTimeout = util.getSessionTimeoutInterval();
+			return;
+		}
+
+		if (input.selectedIssue) {
+			//Get the label for selected choice.
+			issueId = input.selectedIssue;
+		}
+
+		//Compute queues wait time.
+		if (input.action === a.fetchWaitTime) {
+			data.waitTime = util.computeWaitTime(input.location, input.includeQueueLength);
+			return;
+		}
+
+		if (input.otherIssue) {
+			otherIssue = input.otherIssue;
+		}
+
+		if (input.guestName) {
+			guestName = input.guestName;
+		}
+
+		if (input.guestEmail) {
+			guestEmail = input.guestEmail;
+		}
+        
+		if (input.guestPhone) {
+			guestPhone = input.guestPhone;
+		}
+
+		if (input.selectedGuestIssue) {
+			guestIssueId = input.selectedGuestIssue;
+		}
+
+		if (input.otherGuestIssue) {
+			otherGuestIssue = input.otherGuestIssue;
+		}
+
+		try {
+			/**
+				 * On confirmation from user -
+				 * 1. Mark existing record as "Closed Abandoned" to avoid any time conflicts.
+				 * 2. Create a new record in the current queue.
+				 */
+			if (input.agree)
+				facade.switchQueue(userId, queueId, issueId, otherIssue, is_online_checkin);
+
+			// If user clicked submit button, execute the following piece of code.
+			if (input.action === u.employee)
+				onEmployeeCheckIn(userId, queueId, issueId, otherIssue, is_online_checkin, input.queue_threshold);
+
+			else if (input.action === u.guest)
+				onGuestCheckIn(queueId, guestIssueId, otherGuestIssue, guestName, guestEmail, guestPhone, is_online_checkin);
+		}
+		catch (e) {
+			data.error = true;
+			gs.info('Error occured.' + e);
+		}
+	}
+	else {
+		// check if the location exists and is active
+		if (queueId) {
+			
+			data.queueId = queueId;
+			data.config = getConfigurations(queueId);
+			data.reasonList = gqi_facade.fetchReasonConfig(queueId);
+			data.queue_threshold = getNotificationThreshold(queueId);
+			data.keepAliveTimeout = util.getSessionTimeoutInterval();
+			data.isValidLocation = util.checkLocationExists(queueId);
+		}
+		else
+			data.queueId = false;
+	}
+
+	/**
+		 * Will attempt to create an employee interaction if an interaction for this record doesn't exist in
+		 * the NEW or WORK IN PROGRESS state
+		 *
+		 * @param userId
+		 * @param queueId
+		 * @param issueId
+		 * @param otherIssue
+		 * @param is_online_checkin
+		 * @param queueThreshold
+		 */
+	function onEmployeeCheckIn(userId, queueId, issueId, otherIssue, is_online_checkin, queueThreshold) {
+		InteractionStats(queueId, queueThreshold);
+		var gr2 = new GlideRecord(sn_walkup.WalkUpConstants.WU_IXN_CTX_TABLE);
+		// Check if the user exists in the current queue or in a different queue
+		if (gr2.isValid()) {
+			gr2.addActiveQuery();
+			gr2.addQuery('i_type', INTERACTION_TYPE);
+			gr2.addQuery('i_state', NEW).addOrCondition('i_state', WORK_IN_PROGRESS);
+			gr2.addQuery('i_opened_for', userId);
+			gr2.addQuery('wc_is_appointment', false);
+			gr2.query();
+			if (gr2.next()) {
+				var interaction_location = gr2.getValue('i_location');
+				if (interaction_location === facade.getQueueLocation(queueId)) {
+					data.recordFound = true;
+				}
+				else if (interaction_location !== facade.getQueueLocation(queueId)) {
+					data.isPresentInDiffQueue = true;
+					var duplicateQueueId = util.getQueueFromLocation(gr2.getValue('i_location'));
+					var queueName = util.getQueueName(duplicateQueueId);
+					m.differentQueueMsgTwo = gs.getMessage('Do you want to leave the {0} queue and join this queue location? If so, you will be placed at the end of the queue.', [queueName]);
+				}
+			}
+			else {
+				data.newInteraction = true;
+				facade.createEmpInteraction(userId, queueId, issueId, otherIssue, is_online_checkin);
+			}
+		}
+	}
+
+	/**
+		 * Will attempt to create a guest interaction if there is not an interaction record in the NEW or WORK IN PROGRESS
+		 * state that has the same email as the current guest checking in.
+		 *
+		 * @param queueId
+		 * @param guestIssueId
+		 * @param otherGuestIssue
+		 * @param guestName
+		 * @param guestEmail
+		 * @param is_online_checkin
+		 */
+	function onGuestCheckIn(queueId, guestIssueId, otherGuestIssue, guestName, guestEmail, guestPhone, is_online_checkin) {
+		var is_guest = true;
+		InteractionStats(queueId, input.queue_threshold);
+
+		// Check if the guest entry with the same email address exists in the system
+		// If it does, notify the user else create a new interaction in current queue for the guest user.
+		var duplicateFound = checkDuplicateGuest();
+		if (duplicateFound) {
+			data.guestRecordFound = true;
+		} else {
+			gqi_facade.createInteraction(GUEST_SYS_ID, queueId, guestIssueId, otherGuestIssue, is_guest, guestName, guestEmail, guestPhone, is_online_checkin);
+			data.guestRecordCreated = true;
+		}
+	}
+
+	function InteractionStats (queueId, queue_threshold) {
+		var gr1 = new GlideRecord(sn_walkup.WalkUpConstants.WU_IXN_CTX_TABLE);
+		if (gr1.isValid()) {
+			gr1.addActiveQuery();
+			gr1.addQuery('i_type', INTERACTION_TYPE);
+			gr1.addQuery('i_state', NEW);
+			gr1.addQuery('i_location', facade.getQueueLocation(queueId));
+			gr1.addQuery('wc_is_appointment', false);
+			gr1.query();
+
+			data.currentRec = gr1.getRowCount() + 1;
+
+			if (gr1.next() && data.currentRec > Math.abs(queue_threshold))
+				data.specificNotification = true;
+		}
+	}
+
+	/**
+		 * Logic to check if guest user is aready in the queue.
+		 * The unique identifier is guests email address which is parsed from context.
+		 */
+	function checkDuplicateGuest() {
+		try {
+			return facade.checkDuplicateGuest(guestEmail);
+		}
+		catch (e) {
+			data.error = true;
+			gs.info('Guest user:Error occured while checking for duplicate entries.' + e);
+		}
+	}
+
+	function getIssueLabel(choiceValue, choiceList) {
+		for (var i = 0, len = choiceList.length; i < len; i++) {
+			if (choiceList[i].value === choiceValue ) {
+				return choiceList[i].label;
+			}
+		}
+	}
+
+	function getConfigurations(sysId) {
+		var WalkUpUtil = new sn_walkup.ExtPointUtil().loadExtension("WalkUpUtil");
+		var config = WalkUpUtil.fetchQueueConfig(sysId);
+
+		return {
+			enableEmployee: (config.enableEmployee === "1"),
+			enableGuest: (config.enableGuest === "1"),
+			welcomeMessage: (config.checkInGreeting),
+			logo: config.logo,
+			showWaitTime: (config.showWaitTime === "1")
+		};
+	}
+
+	function getNotificationThreshold(locationId) {
+		var threshold = null;
+
+		if (!locationId)
+			return threshold;
+
+		try {
+			var locationRecord = new GlideRecord('wu_location_queue');
+			locationRecord.addActiveQuery();
+			locationRecord.get(locationId);
+			threshold = locationRecord.getValue('threshold_notification');
+		}
+		catch(e) {
+			data.error = true;
+			gs.info('Error occured while fetching notification threshold.' + e);
+		}
+
+		return threshold;
+	}
+
+})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-12 08:00:39</sys_created_on>
+        <sys_id>d68fb1c553c7b210dadf51a0a0490e5e</sys_id>
+        <sys_mod_count>2</sys_mod_count>
+        <sys_name>GQI Guest Walk-up Check-In</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sp_widget_d68fb1c553c7b210dadf51a0a0490e5e</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-12 08:07:38</sys_updated_on>
+        <template><![CDATA[<div class="container" style="margin-top: 20px;">
+  <!-- Guest Check-In Code -->
+  <div ng-if="c.formOptions.enableExternalSupport && c.showDiv.toggle" class="panel panel-primary">
+      <!-- <div class="check-in-header">
+          <p>{{c.welcomeMessage}}</p>
+          <p ng-if="c.data.config.showWaitTime">{{c.waitTimeMessage}}</p>
+      </div>  -->
+      <div class="panel-heading">
+        <h2 class="h4 panel-title ng-binding" aria-label="Walk-up Check-in">
+          <p ng-if="c.data.config.showWaitTime">{{c.waitTimeMessage}}</p>
+          <p ng-if="!c.data.config.showWaitTime">{{c.welcomeMessage}}</p>
+        </h2>
+      </div>
+      <div class="panel-body">
+      <form name="userForm" class="form-horizontal" novalidate>
+          <div class="tab-content tab-validate" style="margin-top:20px;">
+              <!-- Guest Name Field -->
+              <div class="tablet-field form-group">
+                  <label class="show-label control-label col-md-2" for="guest-name">
+                    <span class="fa fa-asterisk mandatory" ng-class="{'mandatory-filled': c.data.guestName}" aria-label="Required"></span>
+                    {{data.msgs.guestNameMsg}}</label>
+                  <div class="input-icon-wrapper col-md-10">
+                      <input aria-label="guest name" class="form-control form-field form-input" id="guest-name" name="guest-name" type="text" ng-model="c.data.guestName" ng-change="c.server.update()" />
+                  </div>
+              </div>
+              
+              <!-- Email Field -->
+              <div class="tablet-field form-group" ng-class="{ 'has-error': userForm.email.$invalid && !userForm.email.$pristine }">
+                  <label for="email" class="show-label control-label col-md-2" ng-class="{'required': userForm.email.$invalid}">
+                    <span class="fa fa-asterisk mandatory" ng-class="{'mandatory-filled': userForm.email.$viewValue}" aria-label="Required"></span>
+                    {{c.validateEmail(userForm.email.$invalid)}}</label>
+                  <div class="input-icon-wrapper col-md-10">
+                     <input aria-label="guest email" ng-model="c.data.guestEmail" id="email" name="email" type="email" 
+                             ng-pattern='/^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/igm'
+                             class="form-control form-field form-input" />
+                  </div>
+              </div>
+              
+              <!-- Phone Number Field -->
+              <div class="tablet-field form-group" ng-show="!c.guestHasPhone" ng-class="{ 'has-error': userForm.phone.$invalid && !userForm.phone.$pristine }">
+                  <label for="phone" class="show-label control-label col-md-2" ng-class="{'required': userForm.phone.$invalid}">
+                    <span class="fa fa-asterisk mandatory" ng-class="{'mandatory-filled': c.guestHasPhone && !userForm.phone.$viewValue}" aria-label="Required"></span>
+                    {{ c.validatePhone(userForm.phone.$invalid) }}</label>
+                  <div class="input-icon-wrapper col-md-10">
+                    <input type="hidden" ng-model="c.data.selectedIntTelCode" value="">
+                     <input aria-label="guest phone" ng-model="c.data.guestPhone" id="phone" name="phone" 
+                             type="tel" ng-pattern="/^(\+\d{1,3})?[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/" 
+                             class="form-control form-field form-input" placeholder=""/>
+                  </div>
+              </div>
+
+              <!-- Phone Number Checkbox -->
+              <div class="tablet-field form-group phone-checkbox">
+                  <label for="skip-phone" class="show-label control-label col-md-2 form-check-label">{{ data.msgs.userHasPhoneMsg }}</label>
+                  <div class="input-icon-wrapper col-md-10">
+                    <input type="checkbox" class="form-check-input" id="skip-phone" aria-label="skip-phone" ng-model="c.guestHasPhone" />
+                </div>
+              </div>
+
+              <!-- Issue Dropdown -->
+              <div class="tablet-field form-group">
+                  <label class="show-label control-label col-md-2" for="issue-dropdown-guest">
+                   <span class="fa fa-asterisk mandatory" ng-class="{'mandatory-filled': c.data.selectedGuestIssue}" aria-label="Required"></span>
+                    {{data.msgs.issueLabel}}</label>
+                  <div class="input-icon-wrapper col-md-10">
+                      <sn-choice-list class="form-field options-drop" id="issue-dropdown-guest" name="issue-dropdown-guest" ng-click="c.onOptionClick(c.data.selectedGuestIssue, 'guest', 'guest-textarea')" sn-model="c.data.selectedGuestIssue" sn-text-field="label" sn-value-field="value" sn-items="data.issueChoices" sn-options="{placeholder:data.msgs.selectMsg}"></sn-choice-list>
+                  </div>
+                  <label hidden for="guest-textarea">{{data.msgs.textAreaLabel}}</label>
+                  <textarea ng-show="c.data.showGuestTextArea" id="guest-textarea" class="form-control form-field form-input" ng-model="c.data.otherGuestIssue" rows="3" maxlength="160" placeholder="{{c.data.msgs.otherfieldMsg}}"></textarea>
+              </div>
+              
+              <!-- Submit Button -->
+              <div class="form-group col-md-2 pull-right check-in-submit">
+                  <button type="button" ng-disabled="c.guestCheckinBtnDisabled()" class="btn btn-primary" ng-click="c.submitGuestRequest()">{{data.msgs.submitMsg}}</button>
+              </div>
+          </div>
+      </form>
+      </div>
+  </div>
+</div>
+<!-- End of Guest Check-In Code -->]]></template>
+    </sp_widget>
+</record_update>

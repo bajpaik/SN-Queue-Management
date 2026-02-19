@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[api.controller = function($scope, $interval, $location) {
+    /* widget controller */
+    var c = this;
+    c.greeting = greetUser();
+    c.formattedDate = getFormattedDate();
+    c.goToLocationSelector = function() {
+        var redirectObj = {
+            id: "gqi_walkup_queue_location"
+        };
+        $location.search(redirectObj);
+    };
+
+    $interval(function() {
+        $scope.currentTime = new Date().toLocaleTimeString();
+    }, 1000);
+
+    function getFormattedDate() {
+        var daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        var monthsOfYear = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+        var now = new Date();
+        var dayName = daysOfWeek[now.getDay()];
+        var monthName = monthsOfYear[now.getMonth()];
+        var dayOfMonth = now.getDate().toString().padStart(2, '0');
+
+        return dayName + ', ' + monthName + ' ' + dayOfMonth;
+
+    }
+
+    function greetUser() {
+        var today = new Date(),
+            greet;
+        var hrs = today.getHours();
+        if (hrs < 12) {
+            greet = 'Good Morning!';
+        } else if (hrs >= 12 && hrs < 17) {
+            greet = 'Good Afternoon!';
+        } else if (hrs >= 17 && hrs < 24) {
+            greet = 'Good Evening!';
+        }
+        return greet;
+    }
+};]]></client_script>
+        <controller_as>c</controller_as>
+        <css>body {&#13;
+	font-family: 'Lato', sans-serif;&#13;
+    margin: 0;&#13;
+  :root {&#13;
+    --background-height: 100vh;&#13;
+}&#13;
+}&#13;
+.gqi-background {&#13;
+    background: url('default_empty_state_image.png');&#13;
+    background-size: auto;&#13;
+    background-repeat: no-repeat;&#13;
+    height: var(--background-height);&#13;
+    color: black;&#13;
+    display: flex;&#13;
+    align-items: center;&#13;
+    justify-content: center;&#13;
+    position: relative;&#13;
+    text-align: center; /* Center text horizontally */&#13;
+    padding: 2rem; /* Add padding to ensure content does not touch edges */&#13;
+    z-index: 1;&#13;
+    overflow: hidden;&#13;
+    &amp;:before {&#13;
+		content: '';&#13;
+		position: absolute;&#13;
+		top: 0;&#13;
+		right: 0;&#13;
+		bottom: 0;&#13;
+		left: 0;&#13;
+		background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0));&#13;
+        z-index: 1; /* Overlay above the background image but below the text */&#13;
+	}&#13;
+    h1 {&#13;
+		font-size: 5.5rem;&#13;
+		font-weight: 700;&#13;
+	}&#13;
+}&#13;
+&#13;
+&#13;
+.custom-btn{&#13;
+   width: 130px;&#13;
+  height: 40px;&#13;
+  color: #fff;&#13;
+  margin: 20px;&#13;
+  border-radius: 5px;&#13;
+  padding: 10px 25px;&#13;
+  font-family: 'Lato', sans-serif;&#13;
+  font-weight: 500;&#13;
+  background: transparent;&#13;
+  cursor: pointer;&#13;
+  transition: all 0.3s ease;&#13;
+  position: relative;&#13;
+  display: inline-block;&#13;
+   box-shadow:inset 2px 2px 2px 0px rgba(255,255,255,.5),&#13;
+   7px 7px 20px 0px rgba(0,0,0,.1),&#13;
+   4px 4px 5px 0px rgba(0,0,0,.1);&#13;
+  outline: none;&#13;
+}&#13;
+.ltu-background h1,&#13;
+.ltu-background h2,&#13;
+.ltu-background h3,&#13;
+.ltu-background h4 {&#13;
+    position: relative;&#13;
+    z-index: 2; /* Ensure text is above the overlay */&#13;
+    color: black; /* Ensure text is readable */&#13;
+}&#13;
+&#13;
+.btn-primary {&#13;
+  background: rgb(255, 0, 15);&#13;
+  background: linear-gradient(0deg, rgba(255, 0, 15,1) 0%, rgba(255, 0, 15,1) 100%);&#13;
+  border: none;&#13;
+}&#13;
+.btn-primary:hover {&#13;
+   background: rgb(0,3,255);&#13;
+background: linear-gradient(0deg, rgba(255, 27, 0,1) 0%, rgba(255, 27, 0,1) 100%);&#13;
+}&#13;
+.display-5 {&#13;
+	font-size: 3rem;&#13;
+    font-weight: 500;&#13;
+}&#13;
+#greeting {&#13;
+	margin-top: 3rem;&#13;
+	font-size: 3rem;&#13;
+    font-weight:500;&#13;
+}&#13;
+#welcome-msg{&#13;
+   margin-top: 3rem;&#13;
+	font-size: 2.25rem;&#13;
+    font-weight:500;&#13;
+}&#13;
+/* Responsive adjustments */&#13;
+@media (max-width: 1200px) {&#13;
+    .ltu-background h1 {&#13;
+		font-size: 7.5rem;&#13;
+	}&#13;
+	#greeting {&#13;
+		font-size: 3.6rem;&#13;
+	}&#13;
+}&#13;
+&#13;
+@media (max-width: 992px) {&#13;
+    .ltu-background h1 {&#13;
+		font-size: 6rem;&#13;
+	}&#13;
+	#greeting {&#13;
+		font-size: 3rem;&#13;
+	}&#13;
+}&#13;
+&#13;
+@media (max-width: 768px) {&#13;
+    .ltu-background {&#13;
+        padding: 1rem;&#13;
+    }&#13;
+    .welcome-text{&#13;
+        margin-top: 70%;&#13;
+    }&#13;
+    .ltu-background h1 {&#13;
+       font-size: 5.5rem; /* Further adjust font size for mobile screens */&#13;
+        display: hidden;&#13;
+    }&#13;
+    #greeting {&#13;
+		font-size: 2.75rem;&#13;
+	}&#13;
+}&#13;
+&#13;
+@media (max-width: 576px) {&#13;
+    .ltu-background h1 {&#13;
+		font-size: 5.5rem;&#13;
+	}&#13;
+   .welcome-text{&#13;
+     margin-top: 70%;&#13;
+ &#13;
+    }&#13;
+	.display-5 {&#13;
+		font-size: 2.5rem;&#13;
+	}&#13;
+	#greeting {&#13;
+		margin-top: 2rem;&#13;
+		font-size: 2.5rem;&#13;
+    }&#13;
+}&#13;
+&#13;
+</css>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description/>
+        <docs/>
+        <field_list/>
+        <has_preview>true</has_preview>
+        <id>gqi-walkup-home</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {
+  
+}]]></link>
+        <name>GQI Walkup Welcome Widget</name>
+        <option_schema/>
+        <public>true</public>
+        <roles/>
+        <script><![CDATA[(function() {
+  /* populate the 'data' object */
+  /* e.g., data.table = $sp.getValue('table'); */
+  data.welcomeMessage = "What would you like to inquire about today?";
+})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-19 04:24:07</sys_created_on>
+        <sys_id>7e115dd35343b210dadf51a0a0490ef2</sys_id>
+        <sys_mod_count>2</sys_mod_count>
+        <sys_name>GQI Walkup Welcome Widget</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sp_widget_7e115dd35343b210dadf51a0a0490ef2</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-19 04:25:12</sys_updated_on>
+        <template><![CDATA[<div class="gqi-background container-fluid">
+ <div class="container">
+  <div class="row flex-column justify-content-center align-items-center text-center">
+   <div class="col-sm-12 welcome-text">
+    <h1 id="time" ng-bind="currentTime"></h1>
+    <h3 id="day" class="display-5">{{c.formattedDate}}</h3>
+    <h2 id="greeting">{{c.greeting}}</h2>
+    <h4 id="welcome-msg">{{c.data.welcomeMessage}}</h4>
+   </div>
+   
+  </div>
+	 <div class="row justify-content-center">
+	 	<div class="col-sm-12">
+	 		<button class="custom-btn btn-primary" ng-click="c.goToLocationSelector()">${Start}</button>
+	 	</div>
+	 </div>
+ </div>
+]]></template>
+    </sp_widget>
+</record_update>

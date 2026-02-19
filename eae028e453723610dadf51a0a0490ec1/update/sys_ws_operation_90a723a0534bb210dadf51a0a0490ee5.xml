@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ws_operation">
+    <sys_ws_operation action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <consumes>application/json,application/xml,text/xml</consumes>
+        <consumes_customized>false</consumes_customized>
+        <default_operation_uri/>
+        <enforce_acl/>
+        <http_method>GET</http_method>
+        <name>Fetch Wait Time of a Queue</name>
+        <operation_script><![CDATA[(function process( /*RESTAPIRequest*/ request, /*RESTAPIResponse*/ response) {
+
+    // implement resource here
+    try {
+        var pathParms = request.pathParams;
+        var baseUrl = 'https://' + gs.getProperty('instance_name') + '.service-now.com';
+        var url = baseUrl + '/api/sn_walkup/walk_up/queue/partitioned/' +
+            pathParms.locationId +
+            '?queueState=' + pathParms.queueState +
+            '&appointments=' + pathParms.appointmentIncluded;
+
+        var appointmentRestApi = new sn_ws.RESTMessageV2();
+        appointmentRestApi.setHttpMethod("get");
+        appointmentRestApi.setRequestHeader('Accept', 'application/json');
+        appointmentRestApi.setAuthenticationProfile('basic', gs.getProperty('x_80404_ltu_walkup.walkup_auth_profile'));
+        appointmentRestApi.setEndpoint(url);
+        var apiResponse = appointmentRestApi.execute();
+
+        var responseBody = apiResponse.getBody();
+        var httpStatus = apiResponse.getStatusCode();
+        if (httpStatus == "200") {
+            var parsedResponse = JSON.parse(responseBody)
+            return parsedResponse.result;
+        } else
+            return null;
+    } catch (ex) {
+        gs.info("Error while to fetch list of users waiting in the queue (Scripted Rest Api): " + ex.message);
+        return {
+            "Received": false,
+            "Response": null
+        };
+    }
+})(request, response);]]></operation_script>
+        <operation_uri>/api/x_80404_gqi_walkup/public_api/{locationId}/{queueState}/{appointmentIncluded}</operation_uri>
+        <produces>application/json,application/xml,text/xml</produces>
+        <produces_customized>false</produces_customized>
+        <relative_path>/{locationId}/{queueState}/{appointmentIncluded}</relative_path>
+        <request_example/>
+        <requires_acl_authorization>true</requires_acl_authorization>
+        <requires_authentication>true</requires_authentication>
+        <requires_snc_internal_role>true</requires_snc_internal_role>
+        <short_description/>
+        <sys_class_name>sys_ws_operation</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-11 02:19:08</sys_created_on>
+        <sys_id>90a723a0534bb210dadf51a0a0490ee5</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>Fetch Wait Time of a Queue</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy>protected</sys_policy>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sys_ws_operation_90a723a0534bb210dadf51a0a0490ee5</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-11 02:19:08</sys_updated_on>
+        <web_service_definition display_value="GQI Walkup APIs for Public">b2f3ab68530bb210dadf51a0a0490e1c</web_service_definition>
+        <web_service_version/>
+    </sys_ws_operation>
+</record_update>

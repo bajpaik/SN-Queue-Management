@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_scope_privilege">
+    <sys_scope_privilege action="INSERT_OR_UPDATE">
+        <operation>execute</operation>
+        <source_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</source_scope>
+        <status>allowed</status>
+        <sys_class_name>sys_scope_privilege</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-11 01:03:34</sys_created_on>
+        <sys_id>8b769fe85387b210dadf51a0a0490e40</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>ExtPointUtil</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sys_scope_privilege_8b769fe85387b210dadf51a0a0490e40</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-11 01:03:34</sys_updated_on>
+        <target_name>ExtPointUtil</target_name>
+        <target_scope display_value="Walk-up Experience">1da803b9b3b10300f686a72256a8dcbc</target_scope>
+        <target_type>sys_script_include</target_type>
+    </sys_scope_privilege>
+</record_update>

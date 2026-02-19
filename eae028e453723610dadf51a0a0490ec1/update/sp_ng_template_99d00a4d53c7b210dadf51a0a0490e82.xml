@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_ng_template">
+    <sp_ng_template action="INSERT_OR_UPDATE">
+        <id>gqiConfirmationModal</id>
+        <sp_widget display_value="GQI Guest Walk-up Check-In">d68fb1c553c7b210dadf51a0a0490e5e</sp_widget>
+        <sys_class_name>sp_ng_template</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-12 08:06:19</sys_created_on>
+        <sys_id>99d00a4d53c7b210dadf51a0a0490e82</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>gqiConfirmationModal</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sp_ng_template_99d00a4d53c7b210dadf51a0a0490e82</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-12 08:06:19</sys_updated_on>
+        <template><![CDATA[<div>
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal" ng-click="dismissModal()" aria-label="{{data.msgs.dismissModal}}" title="{{data.msgs.dismissModal}}" autofocus><i class="fa fa-times" aria-hidden="true"></i></button>
+	</div>
+	<div id="confirmation-modal">
+		<div class="content">
+			<h1 class="h3 description">
+				<b>{{data.msgs.confirmMsgOne}}</b> {{data.msgs.confirmMsgTwo}}
+			</h1>
+			<h2 class="h1 position-number text-primary">
+				#{{data.currentRec}}
+			</h2>
+			<div ng-if="c.data.config.showWaitTime">
+				<p class="h3 description">
+					{{c.yourWaitTimeMessage}}
+				</p>
+			</div>
+			<p class="h3 description">
+				{{c.modalMessage}}
+			</p>
+			<p class="checkin-time">
+				{{data.msgs.confirmMsgThree}} {{c.checkInTime}}
+			</p>
+			<div class="modal-footer">
+				<button type="button" ng-click="c.closeModal()" class="btn btn-default btn-lg">
+					{{data.msgs.returnToScreen}}
+				</button>
+			</div>
+		</div>
+	</div>
+</div>]]></template>
+    </sp_ng_template>
+</record_update>

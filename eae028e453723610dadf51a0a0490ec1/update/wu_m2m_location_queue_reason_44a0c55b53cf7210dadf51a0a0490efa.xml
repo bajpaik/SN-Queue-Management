@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update sys_domain="global" table="wu_m2m_location_queue_reason">
+    <wu_m2m_location_queue_reason action="INSERT_OR_UPDATE">
+        <apptmnt_config_rule/>
+        <display_text_area>false</display_text_area>
+        <order>100</order>
+        <sys_class_name>wu_m2m_location_queue_reason</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-19 03:12:06</sys_created_on>
+        <sys_domain>global</sys_domain>
+        <sys_domain_path>/</sys_domain_path>
+        <sys_id>44a0c55b53cf7210dadf51a0a0490efa</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>GQI Innovation Centre - Southbank.Damaged device assessment</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>wu_m2m_location_queue_reason_44a0c55b53cf7210dadf51a0a0490efa</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-19 03:12:06</sys_updated_on>
+        <wu_location_queue display_value="GQI Innovation Centre - Southbank">869f70d753cf7210dadf51a0a0490e35</wu_location_queue>
+        <wu_reason display_value="Damaged device assessment">ffad043753727210dadf51a0a0490ef3</wu_reason>
+    </wu_m2m_location_queue_reason>
+</record_update>

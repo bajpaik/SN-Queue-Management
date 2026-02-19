@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_angular_provider">
+    <sp_angular_provider action="INSERT_OR_UPDATE">
+        <name>gqiKushWalkupLocationPicker</name>
+        <script><![CDATA[function gqiWalkupLocationPicker() {
+    return {
+        restrict: 'E',
+        scope: {
+            defaultVal: '=?',
+			tablename: '=?'
+        },
+        template: '<div id="wu-location-picker">' +
+            '<sn-record-picker class="record-picker" ng-selected="true" id="location-dropdown" field="location" table="' + "'{{tablename}}'" + '" display-field="' + "'name'" + '" value-field="' + "'sys_id'" + '" search-fields="' + "'name'" + '" default-query="' + "'active=true'" + '"placeholder="${Select a location}">' +
+            '</sn-record-picker>' + '</div>',
+
+    }
+}]]></script>
+        <sys_class_name>sp_angular_provider</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-01 07:27:38</sys_created_on>
+        <sys_id>aa3849e153323610dadf51a0a0490e66</sys_id>
+        <sys_mod_count>29</sys_mod_count>
+        <sys_name>gqiKushWalkupLocationPicker</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sp_angular_provider_aa3849e153323610dadf51a0a0490e66</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-11 00:53:23</sys_updated_on>
+        <type>directive</type>
+    </sp_angular_provider>
+</record_update>

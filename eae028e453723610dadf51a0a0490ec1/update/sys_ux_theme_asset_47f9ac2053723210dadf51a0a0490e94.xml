@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update sys_domain="global" table="sys_ux_theme_asset">
+    <sys_ux_theme_asset action="INSERT_OR_UPDATE">
+        <category>image</category>
+        <name>OIP</name>
+        <sys_class_name>sys_ux_theme_asset</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-01-29 02:14:12</sys_created_on>
+        <sys_domain>global</sys_domain>
+        <sys_domain_path>/</sys_domain_path>
+        <sys_id>47f9ac2053723210dadf51a0a0490e94</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>OIP</sys_name>
+        <sys_overrides/>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sys_ux_theme_asset_47f9ac2053723210dadf51a0a0490e94</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-01-29 02:14:12</sys_updated_on>
+    </sys_ux_theme_asset>
+    <sys_attachment action="INSERT_OR_UPDATE">
+        <average_image_color/>
+        <chunk_size_bytes>700000</chunk_size_bytes>
+        <compressed>true</compressed>
+        <content_type>image/png</content_type>
+        <encryption_context/>
+        <file_name>OIP.png</file_name>
+        <hash>9b48189ea3364282a04ecc2661f758294f27dee1dc61d9b0bab7d8907711f23c</hash>
+        <image_height>50</image_height>
+        <image_width>48</image_width>
+        <size_bytes>702</size_bytes>
+        <size_compressed>725</size_compressed>
+        <state>available</state>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-01-29 02:14:14</sys_created_on>
+        <sys_id>e7f9ac2053723210dadf51a0a0490e97</sys_id>
+        <sys_mod_count>2</sys_mod_count>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-01-29 02:14:14</sys_updated_on>
+        <table_name>sys_ux_theme_asset</table_name>
+        <table_sys_id>47f9ac2053723210dadf51a0a0490e94</table_sys_id>
+    </sys_attachment>
+    <sys_attachment_doc action="INSERT_OR_UPDATE">
+        <data>H4sIAAAAAAAA/w==</data>
+        <length>16</length>
+        <position>0</position>
+        <sys_attachment display_value="OIP.png" sys_id="e7f9ac2053723210dadf51a0a0490e97">e7f9ac2053723210dadf51a0a0490e97</sys_attachment>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-01-29 02:14:14</sys_created_on>
+        <sys_id>6bf9ac2053723210dadf51a0a0490e97</sys_id>
+    </sys_attachment_doc>
+    <sys_attachment_doc action="INSERT_OR_UPDATE">
+        <data>Ab4CQf2JUE5HDQoaCgAAAA1JSERSAAAAMAAAADIIAwAAAC0UqL4AAADDUExURf////3//v7+//39/f/////+/wwaT/v8/AoUTZiftrq+yf7//xIgVPf6++nu8rS5y83T3xsnWLm+0DdFbvP198rP2jM8a7/E0J6ltvn//RgkXdXZ3uXn6ycwYpObsWx1k3iDpVFbgFhli4yUra+yxdje5aqssGVsjyhBkN/k6z9IdkxWfnN8mMHI1hc3kGR3q+br7wAOQvDx9YaYu36NsSc2ZURSfjNQnam31WFsiEtnppyrzJaanLK0slJUdsrMyDtUoAscMs4AAAG2SURBVEjH7VRnk4IwEN0kI0FClSpFFGxYTs9Tr5f//6tug/Xa1/vEY5gsk33L27ydADRo0OAHKKW/hH+CyRRe51Emv1lNFCAk+UeBFm57JscdTAUwTE+uRNY4vuybHAgnQTYrTRAM1n03C/IEDLDefJIPluaqX31lUGjr8bxwbx+xWuIqbrHXMw2gd2uBpeyq55sVhytVDEJ95gOYpU0Im+s9A7pWtquwTAcgUubd7c3d9S8YTPRlrRRhKXndcqSW0FY6KGyhLrqr6cMpQQryXNcj3XCIIKVqgWdwGDmPR4IxUCPz494+M5AQzAxKZqoeO2kPCcn4ladOgQQNOIcqiH17+mSeVbVg4OCh2Et7v/OG6hYM7eV9qPQPBHyWTrC+bpyj4GKDgRYXsA6yEKPX3PFrSRwEx+BL4xRauepue5M4szHXifP24iWK4EiQ3sjGn7DxM8MoA11xBj5wPON9rOiT8biqfahtFth4u7qf+idRuGz8cITqCE4JS0J7kyYpjMbpoSbab2li1LEvXh+OjBMBhF/8Oc/QKbyymzLOhBCoWFDGGJUjTvll4lErZjS3QIMG/4xPv20iHviPYTsAAAAASUVORK5CYIIbu1CTvgIAAA==</data>
+        <length>956</length>
+        <position>1</position>
+        <sys_attachment display_value="OIP.png" sys_id="e7f9ac2053723210dadf51a0a0490e97">e7f9ac2053723210dadf51a0a0490e97</sys_attachment>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-01-29 02:14:14</sys_created_on>
+        <sys_id>2ff9ac2053723210dadf51a0a0490e97</sys_id>
+    </sys_attachment_doc>
+</record_update>
