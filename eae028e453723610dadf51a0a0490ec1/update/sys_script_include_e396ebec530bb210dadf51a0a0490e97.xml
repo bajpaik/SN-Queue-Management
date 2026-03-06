@@ -13,13 +13,14 @@
 GQI_WalkupHelper.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
     sn_walkup_extension: new sn_walkup.ExtPointUtil().loadExtension("InteractionFacade"),
     sn_walkup_util: new sn_walkup.ExtPointUtil().loadExtension('WalkUpUtil'),
+	gqi_wait_time_util: new x_80404_gqi_queu_0.WaitTimeComputationOfQueue(),
     WAIT_TIME: "",
     WU_CONTEXT_TABLE: 'wu_context',
     INTERACTION_TABLE: 'interaction',
     QUEUE_TABLE: 'wu_location_queue',
     OPENED_FOR: 'opened_for',
     STATE: 'state',
-    GUEST_USER: gs.getProperty('x_80404_ltu_walkup.guest_user_profile'),
+    GUEST_USER: gs.getProperty('x_80404_gqi_queu_0.guest_user_profile'),
     CREATED: 'sys_created_on',
     QUEUE: 'queue',
     INTERACTION_TYPE: 'walkup',
@@ -127,9 +128,9 @@ GQI_WalkupHelper.prototype = Object.extendsObject(global.AbstractAjaxProcessor, 
     },
 
     triggerSMSToWalkupUser: function(phone, smsContent) {
-        var endpoint = gs.getProperty('x_80404_ltu_walkup.sms_api_gateway_endpoint');
-        var auth_profile = gs.getProperty('x_80404_ltu_walkup.sms_api_gateway_auth_profile');
-        var sourceId = gs.getProperty('x_80404_ltu_walkup.sms_api_gateway_sourceid');
+        var endpoint = gs.getProperty('x_80404_gqi_queu_0.sms_api_gateway_endpoint');
+        var auth_profile = gs.getProperty('x_80404_gqi_queu_0.sms_api_gateway_auth_profile');
+        var sourceId = gs.getProperty('x_80404_gqi_queu_0.sms_api_gateway_sourceid');
         var requestBody = {
             "source": phone.toString(),
             "content": smsContent,
@@ -247,7 +248,7 @@ GQI_WalkupHelper.prototype = Object.extendsObject(global.AbstractAjaxProcessor, 
             if (method == 'post' || method == 'put')
                 walkUpApi.setRequestBody(JSON.stringify(requestBody));
             walkUpApi.setEndpoint(endpoint);
-            walkUpApi.setAuthenticationProfile('basic', gs.getProperty('x_80404_ltu_walkup.walkup_auth_profile'));
+            walkUpApi.setAuthenticationProfile('basic', gs.getProperty('x_80404_gqi_queu_0.walkup_auth_profile'));
             var response = walkUpApi.execute();
             var responseBody = response.getBody();
             var httpStatus = response.getStatusCode();
@@ -319,14 +320,11 @@ GQI_WalkupHelper.prototype = Object.extendsObject(global.AbstractAjaxProcessor, 
 
     getQueueReasons: function(queueId) {
         try {
-            gs.info('getReasons function called ' + this.getParameter('sysparm_queueId'))
             var reasonsList = '';
             if (queueId != "")
                 queueId = this.getParameter('sysparm_queueId');
-            gs.info('Queue ID 1 >  ' + queueId)
             if (gs.nil(queueId))
                 return reasonsList;
-            gs.info('Queue ID 2' + queueId)
             var reasonsRecord = new GlideRecord('wu_m2m_location_queue_reason');
             reasonsRecord.addQuery('wu_location_queue', queueId);
             reasonsRecord.addQuery('wu_reason.active', true);
@@ -345,11 +343,13 @@ GQI_WalkupHelper.prototype = Object.extendsObject(global.AbstractAjaxProcessor, 
         }
     },
 
-    computeWaitTimeByQueueLength: function(location) {
-        var includeQueueLength = true;
-        var walkUpUtil = this.sn_walkup_util.computeWaitTime(location, includeQueueLength);
+    computeWaitTimeByQueueLength: function(location, agentCount) {
+       // var includeQueueLength = true;
+		var walkupUtil = this.gqi_wait_time_util.getEstimatedWaitTime(location, agentCount);
+        //var walkUpUtil = this.sn_walkup_util.computeWaitTime(location, includeQueueLength);
         return walkUpUtil;
     },
+	
 
     fetchReasonConfig: function(queueId) {
         var reasonList = [];
@@ -447,13 +447,13 @@ GQI_WalkupHelper.prototype = Object.extendsObject(global.AbstractAjaxProcessor, 
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-02-11 02:17:34</sys_created_on>
         <sys_id>e396ebec530bb210dadf51a0a0490e97</sys_id>
-        <sys_mod_count>4</sys_mod_count>
+        <sys_mod_count>7</sys_mod_count>
         <sys_name>GQI_WalkupHelper</sys_name>
         <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
         <sys_policy>protected</sys_policy>
         <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
         <sys_update_name>sys_script_include_e396ebec530bb210dadf51a0a0490e97</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-02-19 04:54:31</sys_updated_on>
+        <sys_updated_on>2026-02-24 04:49:51</sys_updated_on>
     </sys_script_include>
 </record_update>

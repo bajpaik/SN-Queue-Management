@@ -23,7 +23,6 @@
     c.checkInLink = checkInLink;
 
     var urlParams = $location.search();
-	console.log('$location.search() result' ,urlParams)
 
     // call to initialize closest walk-up location, queue, and schedule.
     initializePage();
@@ -47,11 +46,9 @@
     // Listen to changes made to the record picker
     $scope.$on("queue.change", function(evt, parms) {
         startLoading();
-		console.log('on queue change',parms)
         var newLocId = parms.newValue;
         var oldLocId = parms.oldValue;
         var name = parms.displayValue;
-		console.log('c.previousSysId', c.previousSysId)
         // When a new value is selcted from the location picker
         if (newLocId && c.previousSysId === newLocId) {
             c.previousSysId = newLocId;
@@ -85,7 +82,6 @@
     function setLink(id) {
         c.queueLink = queueLink + '&location_id=' + id;
         c.checkInLink = checkInLink + '&location_id=' + id;
-		console.log('setting link. ' + c.queueLink + ' > ' + c.checkInLink)
     }
     c.cancelCampusSelection = function() {
         c.selectedCampus = '';
@@ -122,6 +118,7 @@
             sysId: sysId
         }).then(function(result) {
             var locationName = result.data.doesLocationExist;
+			console.log('location exist ' + locationName)
 
             if (locationName) {
                 c.data.recordPickerFields = {
@@ -141,6 +138,7 @@
                         spUtil.addErrorMessage(c.data.msgs.errorMsg);
                         return;
                     }
+					console.log('user exists response ', response)
                     c.data.checkInLocation = response.data.location;
                     var locationTimeZone = c.data.locationTimeZone = spUtil.getMomentTimeZone(response.data.locationTimeZone);
                     var locationId = c.data.queueId = response.data.location.sys_id;
@@ -167,6 +165,7 @@
 
                         // if user is not in a queue, perform geolocation and render page
                     } else {
+						console.log('user not in the queue')
                         navigator.geolocation.getCurrentPosition(
                             function(position) {
                                 var geoLoc = position.coords;
@@ -224,6 +223,7 @@
             usersPosition: usersPosition
         }).then(function(response) {
             c.data.waitTime = response.data.waitTime;
+			console.log('WAIT TIME '  + c.data.waitTime + ' ' + usersPosition)
             if (usersPosition !== 0) {
                 showYourWaitTimeMsg(c.data.waitTime);
             } else {
@@ -890,14 +890,14 @@
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-02-11 00:51:44</sys_created_on>
         <sys_id>338357645387b210dadf51a0a0490ed8</sys_id>
-        <sys_mod_count>29</sys_mod_count>
+        <sys_mod_count>32</sys_mod_count>
         <sys_name>GQI Walkup Location Select (LTU)</sys_name>
         <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
         <sys_policy/>
         <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
         <sys_update_name>sp_widget_338357645387b210dadf51a0a0490ed8</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-02-19 04:39:59</sys_updated_on>
+        <sys_updated_on>2026-02-20 02:57:15</sys_updated_on>
         <template><![CDATA[<div class="panel panel-{{options.color}} b">
   <div ng-hide="true" ng-repeat="i in c.data.scheduleWidgets">
     <sp-widget widget="i"></sp-widget>

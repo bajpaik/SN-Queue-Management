@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_80404_gqi_queu_0.WaitTimeComputationOfQueue</api_name>
+        <caller_access/>
+        <client_callable>true</client_callable>
+        <description/>
+        <mobile_callable>false</mobile_callable>
+        <name>WaitTimeComputationOfQueue</name>
+        <sandbox_callable>false</sandbox_callable>
+        <script><![CDATA[var WaitTimeComputationOfQueue = Class.create();
+WaitTimeComputationOfQueue.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
+
+    queueTable: sn_walkup.WalkUpConstants.INTERACTION_TABLE,
+    queueId: '',
+
+    getArrivalRate: function() {
+
+        var workItem = new GlideRecord('awa_work_item');
+        workItem.addQuery('queue', this.queueId);
+        workItem.addQuery('state', 'queued').addOrCondition('state', 'pending_accept');
+        workItem.addQuery('active', 'true');
+        workItem.setCategory("walkup_meta");
+        workItem.query();
+
+        var records = [];
+        while (workItem.next()) {
+            var record = {
+                number: workItem.document_id.number,
+                sysId: workItem.getUniqueValue(),
+                createdTimestamp: new GlideDateTime(workItem.sys_created_on.getDisplayValue()).getNumericValue()
+            };
+            records.push(record);
+        }
+
+        // Sort records by creation timestamp
+        records.sort(function(a, b) {
+            return a.createdTimestamp - b.createdTimestamp;
+        });
+
+        var interarrivalTimes = [];
+        var previousCreatedTime = null;
+
+        // Loop to compute interarrival times
+        for (var i = 0; i < records.length; i++) {
+            var currentCreatedTime = records[i].createdTimestamp;
+
+            // Calculate interarrival time
+            if (previousCreatedTime !== null) {
+                var interarrivalTime = currentCreatedTime - previousCreatedTime;
+                interarrivalTimes.push(interarrivalTime / 60000); // Convert milliseconds to minutes
+            }
+
+            previousCreatedTime = currentCreatedTime;
+        }
+
+        // Handle cases where no valid interarrival times were collected
+        if (interarrivalTimes.length === 0) {
+            gs.error('No valid interarrival times found.');
+            return {
+                arrivalRate: 0 // No valid arrival rate
+            };
+        }
+
+        // Calculate arrival rate
+        var meanInterarrivalTime = this.calculateMean(interarrivalTimes);
+        var arrivalRate = meanInterarrivalTime > 0 ? 1 / meanInterarrivalTime : 0; // Prevent division by zero
+
+        return {
+            arrivalRate: arrivalRate
+        };
+    },
+
+
+    getServiceRate: function() {
+        var workItem = new GlideRecord('awa_work_item');
+        workItem.addQuery('queue', this.queueId);
+        workItem.addEncodedQuery('state=accepted^ORstate=cancelled');
+        workItem.addQuery('active', 'true');
+        workItem.setCategory("walkup_meta");
+        workItem.query();
+
+        var records = [];
+        while (workItem.next()) {
+
+            var record = {
+                number: workItem.document_id.number,
+                sysId: workItem.getUniqueValue(),
+                createdTimestamp: new GlideDateTime(workItem.sys_created_on.getDisplayValue()).getNumericValue(),
+                closedTimestamp: workItem.sys_updated_on ? new GlideDateTime(workItem.sys_updated_on.getDisplayValue()).getNumericValue() : null // Check if sys_updated_on exists
+            };
+            records.push(record);
+        }
+        // Sort records by creation timestamp
+        records.sort(function(a, b) {
+            return a.createdTimestamp - b.createdTimestamp;
+        });
+
+        var serviceTimes = [];
+        // Loop to compute service times
+        for (var i = 0; i < records.length; i++) {
+            var createdTimestamp = records[i].createdTimestamp;
+            var closedTimestamp = records[i].closedTimestamp;
+            // Calculate service time (if closedTimestamp exists)
+            if (closedTimestamp) {
+
+                var totalElapsedTime = closedTimestamp - createdTimestamp;
+                serviceTimes.push(totalElapsedTime / 60000); // Convert milliseconds to minutes
+            }
+        }
+        // Handle cases where no valid service times were collected
+        if (serviceTimes.length === 0) {
+            gs.error('No valid service times found.');
+            return {
+                serviceRate: 0 // No valid service rate
+            };
+        }
+
+        // Calculate service rate
+        var meanServiceTime = this.calculateMean(serviceTimes);
+        var serviceRate = meanServiceTime > 0 ? 1 / meanServiceTime : 0; // Prevent division by zero
+        return {
+            serviceRate: serviceRate
+        };
+    },
+
+    calculateMean: function(data) {
+        var sum = data.reduce(function(acc, value) {
+            return acc + value;
+        }, 0);
+        return data.length ? sum / data.length : 0; // Prevent division by zero
+    },
+
+    getEstimatedWaitTime: function(queue, numberOfServers) {
+        queue = this.queueId;
+        var arrivalRate = this.getArrivalRate().arrivalRate; // tasks per minute
+        var serviceRate = this.getServiceRate().serviceRate; // tasks per minute
+
+        if (arrivalRate === 0 || serviceRate === 0 || numberOfServers === 0) {
+            gs.error('Invalid arrival rate, service rate, or number of servers. Cannot calculate wait time.');
+            return {
+                waitTimeInQueue: 0
+            };
+        }
+
+        // Calculate utilization per server
+        var utilization = arrivalRate / (numberOfServers * serviceRate);
+
+        // Calculate P0
+        var rho = arrivalRate / (numberOfServers * serviceRate);
+        var sum = 0;
+
+        // Calculate sum of terms for P0
+        for (var k = 0; k < numberOfServers; k++) {
+            sum += Math.pow(arrivalRate / serviceRate, k) / this.factorial(k);
+        }
+        var term = Math.pow(arrivalRate / serviceRate, numberOfServers) / (this.factorial(numberOfServers) * (1 - utilization));
+        var P0 = 1 / (sum + term);
+
+        // Calculate Lq
+        var Lq = (Math.pow(arrivalRate / serviceRate, numberOfServers) * serviceRate * P0) / (this.factorial(numberOfServers) * Math.pow(1 - utilization, 2));
+
+        // Calculate Wq
+        var Wq = Lq / arrivalRate;
+
+        return {
+            waitTimeInQueue: Wq
+        };
+    },
+
+    factorial: function(n) {
+        if (n === 0 || n === 1) return 1;
+        var result = 1;
+        for (var i = 2; i <= n; i++) {
+            result *= i;
+        }
+        return result;
+    },
+    type: 'WaitTimeComputationOfQueue'
+});]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-02-20 03:09:42</sys_created_on>
+        <sys_id>0058c22b53837210dadf51a0a0490ed6</sys_id>
+        <sys_mod_count>16</sys_mod_count>
+        <sys_name>WaitTimeComputationOfQueue</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sys_script_include_0058c22b53837210dadf51a0a0490ed6</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-02-24 04:49:28</sys_updated_on>
+    </sys_script_include>
+</record_update>
