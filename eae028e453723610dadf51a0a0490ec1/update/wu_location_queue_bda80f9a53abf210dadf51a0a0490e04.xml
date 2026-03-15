@@ -34,7 +34,7 @@
         <hold_time>5</hold_time>
         <initial_agent_response>Thank you for contacting support. I am looking into your question now and will be with you shortly.</initial_agent_response>
         <last_checkin>30</last_checkin>
-        <location display_value="GQI Melbourne Office">5dcb927d53f2f210dadf51a0a0490e79</location>
+        <location display_value="GQI Docklands">6dc88f12536ff210dadf51a0a0490ee1</location>
         <location_consent/>
         <location_image/>
         <logo/>
@@ -42,36 +42,36 @@
         <max_search_results>5</max_search_results>
         <max_wait_time>1970-01-01 00:00:00</max_wait_time>
         <max_wait_time_message>No agents are available to chat right now. Check back later.</max_wait_time_message>
-        <name>GQI Innovation Centre - Southbank</name>
+        <name>GQI Docklands</name>
         <name_configuration>show_last_name</name_configuration>
-        <number>QUE00018</number>
+        <number>QUE00021</number>
         <order>100</order>
         <phone_number/>
         <phone_number_label>Contact IT Support</phone_number_label>
         <queue_display_limit>5</queue_display_limit>
         <queue_logo/>
         <record_producer display_value="Create Incident">3f1dd0320a0a0b99000a53f7604a2ef9</record_producer>
-        <schedule display_value="8-5 weekdays">08fcd0830a0a0b2600079f56b1adb9ae</schedule>
+        <schedule display_value="3rd Saturday Maintenance">245b31e3672322004792adab9485ef9c</schedule>
         <search_config display_value="Incident Deflection">091fa3d3c37221003d2ae219cdba8f0e</search_config>
         <service_channel display_value="Walk-up">48e395bc3b102300f1612c2b54efc46f</service_channel>
         <short_description/>
         <show_kiosk>false</show_kiosk>
-        <show_wait_time>true</show_wait_time>
+        <show_wait_time>false</show_wait_time>
         <stockroom/>
         <subflow/>
         <sys_class_name>wu_location_queue</sys_class_name>
         <sys_created_by>admin</sys_created_by>
-        <sys_created_on>2026-02-19 03:11:06</sys_created_on>
+        <sys_created_on>2026-03-13 07:04:38</sys_created_on>
         <sys_domain>global</sys_domain>
-        <sys_id>869f70d753cf7210dadf51a0a0490e35</sys_id>
-        <sys_mod_count>3</sys_mod_count>
-        <sys_name>GQI Innovation Centre - Southbank</sys_name>
+        <sys_id>bda80f9a53abf210dadf51a0a0490e04</sys_id>
+        <sys_mod_count>1</sys_mod_count>
+        <sys_name>GQI Docklands</sys_name>
         <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
         <sys_policy/>
         <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
-        <sys_update_name>wu_location_queue_869f70d753cf7210dadf51a0a0490e35</sys_update_name>
+        <sys_update_name>wu_location_queue_bda80f9a53abf210dadf51a0a0490e04</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-03-09 23:43:24</sys_updated_on>
+        <sys_updated_on>2026-03-13 07:27:14</sys_updated_on>
         <target_wait_time/>
         <threshold_notification>1</threshold_notification>
         <topic/>

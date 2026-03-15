@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_package_dependency_m2m">
+    <sys_package_dependency_m2m action="INSERT_OR_UPDATE">
+        <dependency display_value="Interactions Management" source="com.glide.interaction">bebdf3aa5c0422105590c762d23e6386</dependency>
+        <min_version>1.0.0</min_version>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-03-08 07:00:16</sys_created_on>
+        <sys_id>c0e7953c53e33210dadf51a0a0490ec5</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-03-08 07:00:16</sys_updated_on>
+    </sys_package_dependency_m2m>
+</record_update>

@@ -194,7 +194,7 @@
     // finding the closest walk-up location. Performs an API call to browser and waits for
     // promise of a location.
     function initializePage() {
-		console.log('initializing page ', urlParams)
+		console.log('initializing page urlParams', urlParams)
         var campusSysId = urlParams.campus_id;
         if (campusSysId) {
             c.isCampusSelected = true;
@@ -768,7 +768,6 @@
 
     if (input && input.action === actions.checkLocationExists) {
         data.doesLocationExist = WalkUpUtil.checkLocationExists(input.sysId);
-
 	}
 	
     if (input)
@@ -890,14 +889,14 @@
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-02-11 00:51:44</sys_created_on>
         <sys_id>338357645387b210dadf51a0a0490ed8</sys_id>
-        <sys_mod_count>32</sys_mod_count>
+        <sys_mod_count>33</sys_mod_count>
         <sys_name>GQI Walkup Location Select (LTU)</sys_name>
         <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
         <sys_policy/>
         <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
         <sys_update_name>sp_widget_338357645387b210dadf51a0a0490ed8</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-02-20 02:57:15</sys_updated_on>
+        <sys_updated_on>2026-03-13 07:31:47</sys_updated_on>
         <template><![CDATA[<div class="panel panel-{{options.color}} b">
   <div ng-hide="true" ng-repeat="i in c.data.scheduleWidgets">
     <sp-widget widget="i"></sp-widget>

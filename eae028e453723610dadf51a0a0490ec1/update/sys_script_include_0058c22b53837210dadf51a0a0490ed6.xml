@@ -137,6 +137,8 @@ WaitTimeComputationOfQueue.prototype = Object.extendsObject(global.AbstractAjaxP
         var arrivalRate = this.getArrivalRate().arrivalRate; // tasks per minute
         var serviceRate = this.getServiceRate().serviceRate; // tasks per minute
 
+		gs.info(JSON.stringify(arrivalRate));
+		gs.info(JSON.stringify(serviceRate))
         if (arrivalRate === 0 || serviceRate === 0 || numberOfServers === 0) {
             gs.error('Invalid arrival rate, service rate, or number of servers. Cannot calculate wait time.');
             return {
@@ -183,13 +185,13 @@ WaitTimeComputationOfQueue.prototype = Object.extendsObject(global.AbstractAjaxP
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-02-20 03:09:42</sys_created_on>
         <sys_id>0058c22b53837210dadf51a0a0490ed6</sys_id>
-        <sys_mod_count>16</sys_mod_count>
+        <sys_mod_count>17</sys_mod_count>
         <sys_name>WaitTimeComputationOfQueue</sys_name>
         <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
         <sys_policy>read</sys_policy>
         <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
         <sys_update_name>sys_script_include_0058c22b53837210dadf51a0a0490ed6</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-02-24 04:49:28</sys_updated_on>
+        <sys_updated_on>2026-03-13 02:47:18</sys_updated_on>
     </sys_script_include>
 </record_update>

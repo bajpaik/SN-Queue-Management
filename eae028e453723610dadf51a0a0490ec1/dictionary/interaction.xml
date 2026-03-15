@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element audit="true" db_object_id="3fbd37aa5c0422105590c762d23e63b8" label="Interaction" max_length="40" name="interaction" type="collection">
+        <element label="Reason" max_length="32" name="x_80404_gqi_queu_0_reason" reference="wu_reason" reference_qual="active=true^EQ" reference_qual_condition="active=true^EQ" type="reference"/>
+        <element label="Queue" max_length="32" name="x_80404_gqi_queu_0_walkup_queue" reference="wu_location_queue" reference_qual="active=true^EQ" reference_qual_condition="active=true^EQ" type="reference"/>
+        <index name="index">
+            <element name="x_80404_gqi_queu_0_reason"/>
+        </index>
+    </element>
+</database>

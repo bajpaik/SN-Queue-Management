@@ -18,13 +18,19 @@
     var promptMsg = '';
     c.isDisabled = false;
 
+	console.log('WAIT TIME LOGGED for lOCATION ' + c.data.queueId)
 
 
     // Initialize
     initializePage(c.data.queueId);
+
     if (c.data.queueId) {
+		// var availableAgents = spUtil.recordWatch($scope, 'awa_agent_presence', 'current_presence_state=0b10223c57a313005baaaa65ef94f970', function(status){
+		// 	console.log('AGENTS', status)
+		// });
         // Listen only to interaction changes for the current queue
-        spUtil.recordWatch($scope, 'interaction', 'location=' + c.data.queueLocation_Id, function(result) {
+        spUtil.recordWatch($scope, 'interaction', 'location=' + c.data.queueId, 
+		function(result) {
             if (!result.data.sys_id)
                 return false;
 
@@ -34,6 +40,7 @@
             if (!changes || changes.length === 0 || changes.indexOf('state') === -1)
                 return false;
 
+			console.log('c.data.config.showWaitTime ' + c.data.config.showWaitTime);
             if (c.data.config.showWaitTime)
                 getWaitTime(c.data.queueId);
 
@@ -190,12 +197,12 @@
     // Populate list of reasons and queue threshold from server
     function initializePage(queueId) {
         if (queueId) {
-
+			console.log('show WAIT TIME ' + c.data.config.showWaitTime)
             //Get the latest computed wait time
             if (c.data.config.showWaitTime) {
                 c.server.get({
                     action: c.data.userAction.fetchWaitTime,
-                    location: queueId,
+                    location: c.data.queueLocation_Id,
                     includeQueueLength: true
                 }).then(function(response) {
                     c.data.waitTime = response.data.waitTime;
@@ -280,6 +287,7 @@
             location: locationId,
             includeQueueLength: true
         }).then(function(response) {
+			console.log('WAIT TIME RESPONSE ', response)
             c.data.waitTime = response.data.waitTime;
             showWaitTimeMsg(c.data.waitTime);
         });
@@ -573,7 +581,8 @@
 
 	// Get configuration for this location
 	var queueId = $sp.getParameter('location_id');
-	data.queueLocation_Id = facade.getQueueLocation(queueId);
+	data.queueLocation_Id = gqi_facade.getQueueLocation(queueId);
+	
 
 	if (input) {
 		data.config = getConfigurations(queueId);
@@ -597,13 +606,14 @@
 
 		//Compute queues wait time.
 		if (input.action === a.fetchWaitTime) {
-			data.waitTime = util.computeWaitTime(input.location, input.includeQueueLength);
+			data.waitTime = gqi_facade.computeWaitTimeByQueueLength(queueId, 1);
+			gs.addInfoMessage('wait time computed is ' + JSON.stringify(data.waitTime))
+			//data.waitTime = util.computeWaitTime(input.location, input.includeQueueLength);
 			return;
 		}
 
-		if (input.otherIssue) {
+		if (input.otherIssue)
 			otherIssue = input.otherIssue;
-		}
 
 		if (input.guestName) {
 			guestName = input.guestName;
@@ -806,14 +816,14 @@
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-02-12 08:00:39</sys_created_on>
         <sys_id>d68fb1c553c7b210dadf51a0a0490e5e</sys_id>
-        <sys_mod_count>2</sys_mod_count>
+        <sys_mod_count>14</sys_mod_count>
         <sys_name>GQI Guest Walk-up Check-In</sys_name>
         <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
         <sys_policy/>
         <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
         <sys_update_name>sp_widget_d68fb1c553c7b210dadf51a0a0490e5e</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-02-12 08:07:38</sys_updated_on>
+        <sys_updated_on>2026-03-13 05:55:13</sys_updated_on>
         <template><![CDATA[<div class="container" style="margin-top: 20px;">
   <!-- Guest Check-In Code -->
   <div ng-if="c.formOptions.enableExternalSupport && c.showDiv.toggle" class="panel panel-primary">

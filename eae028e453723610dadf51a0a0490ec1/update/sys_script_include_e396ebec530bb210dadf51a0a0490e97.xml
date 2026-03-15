@@ -13,7 +13,7 @@
 GQI_WalkupHelper.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
     sn_walkup_extension: new sn_walkup.ExtPointUtil().loadExtension("InteractionFacade"),
     sn_walkup_util: new sn_walkup.ExtPointUtil().loadExtension('WalkUpUtil'),
-	gqi_wait_time_util: new x_80404_gqi_queu_0.WaitTimeComputationOfQueue(),
+    gqi_wait_time_util: new x_80404_gqi_queu_0.WaitTimeComputationOfQueue(),
     WAIT_TIME: "",
     WU_CONTEXT_TABLE: 'wu_context',
     INTERACTION_TABLE: 'interaction',
@@ -33,6 +33,7 @@ GQI_WalkupHelper.prototype = Object.extendsObject(global.AbstractAjaxProcessor, 
     ESTIMATED_WAITTIME_MSG: gs.getMessage("Your estimated wait is "),
     LEAVE_QUEUE_MSG_EXT: gs.getMessage("We will let you know when its your turn. Meanwhile if you wish to leave the queue, please respond to the message with "),
     LEAVE_QUEUE_ACKNOWLEDGMENT: gs.getMessage('Thanks for visiting the walkup location'),
+    ACCEPTED_QUEUE_MSG: gs.getMessage('An agent has picked up your request, Start making your way to the Help Zone'),
 
 
     process: function( /*array*/ data) {
@@ -96,7 +97,7 @@ GQI_WalkupHelper.prototype = Object.extendsObject(global.AbstractAjaxProcessor, 
                 'guestName': guest_name,
                 'queueId': queueId
             };
-            gs.eventQueue('x_80404_ltu_walkup.interaction.created', gr, guest_email, gr.sys_id);
+            gs.eventQueue('x_80404_gqi_queue.interaction.created', gr, guest_email, gr.sys_id);
 
             if (!gr)
                 return false;
@@ -108,7 +109,6 @@ GQI_WalkupHelper.prototype = Object.extendsObject(global.AbstractAjaxProcessor, 
             } else {
                 wu_state = 'new';
             }
-
 
             var interactionObj = sn_interaction.Interaction.create({
                 type: sn_walkup.WalkUpConstants.WALKUP_TYPE,
@@ -166,6 +166,12 @@ GQI_WalkupHelper.prototype = Object.extendsObject(global.AbstractAjaxProcessor, 
                 'Response': null
             };
         }
+    },
+
+    getQueueLocation: function(queueId) {
+        var gr = new GlideRecord(sn_walkup.WalkUpConstants.LOCATION_QUEUE_TABLE);
+        if (gr.get(queueId))
+            return gr.getValue("x_80404_gqi_queu_0_walkup_campus"); //simulates location field
     },
 
     getScheduleTZDateTime: function(timeZone) {
@@ -344,12 +350,28 @@ GQI_WalkupHelper.prototype = Object.extendsObject(global.AbstractAjaxProcessor, 
     },
 
     computeWaitTimeByQueueLength: function(location, agentCount) {
-       // var includeQueueLength = true;
-		var walkupUtil = this.gqi_wait_time_util.getEstimatedWaitTime(location, agentCount);
+        var self = this;
+        self.gqi_wait_time_util.queueId = location;
+        var walkUpUtil = self.gqi_wait_time_util.getEstimatedWaitTime(location, agentCount);
         //var walkUpUtil = this.sn_walkup_util.computeWaitTime(location, includeQueueLength);
         return walkUpUtil;
     },
-	
+
+    getAgentPresence: function() {
+        var agentAggr = new GlideAggregate('awa_agent_presence');
+        agentAggr.addAggregate('COUNT');
+        agentAggr.groupBy('current_presence_state');
+        agentAggr.query();
+        var obj = {};
+        while (agentAggr.next()) {
+            if (agentAggr.current_presence_state.name.toLowerCase().indexOf('available') > -1)
+                obj.available = parseInt(agentAggr.getAggregate('COUNT'));
+            if (agentAggr.current_presence_state.name.toLowerCase().indexOf('offline') > -1)
+                obj.offline = parseInt(agentAggr.getAggregate('COUNT'));
+        }
+        return obj;
+    },
+
 
     fetchReasonConfig: function(queueId) {
         var reasonList = [];
@@ -447,13 +469,13 @@ GQI_WalkupHelper.prototype = Object.extendsObject(global.AbstractAjaxProcessor, 
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-02-11 02:17:34</sys_created_on>
         <sys_id>e396ebec530bb210dadf51a0a0490e97</sys_id>
-        <sys_mod_count>7</sys_mod_count>
+        <sys_mod_count>14</sys_mod_count>
         <sys_name>GQI_WalkupHelper</sys_name>
         <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
         <sys_policy>protected</sys_policy>
         <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
         <sys_update_name>sys_script_include_e396ebec530bb210dadf51a0a0490e97</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-02-24 04:49:51</sys_updated_on>
+        <sys_updated_on>2026-03-13 05:23:38</sys_updated_on>
     </sys_script_include>
 </record_update>
