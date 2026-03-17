@@ -11,7 +11,10 @@
         <away_message>We are away at the moment. Please check back later.</away_message>
         <check_in_greeting>Welcome! Please check in below to add yourself to the queue.</check_in_greeting>
         <closed_message>We are closed. Please refer to the hours of operation.</closed_message>
-        <condition/>
+        <condition table="interaction">active=true^x_80404_gqi_queu_0_walkup_queue=bb749b5a53633210dadf51a0a0490ea7^EQ<item endquery="false" field="active" goto="false" newquery="false" operator="=" or="false" value="true"/>
+            <item display_table="wu_location_queue" display_value="GQI Noida Strategic Delivery Center" endquery="false" field="x_80404_gqi_queu_0_walkup_queue" goto="false" newquery="false" operator="=" or="false" value="bb749b5a53633210dadf51a0a0490ea7"/>
+            <item endquery="true" field="" goto="false" newquery="false" operator="=" or="false" value=""/>
+        </condition>
         <condition_mode>simple</condition_mode>
         <condition_script><![CDATA[(function executeCondition(/* glide record */ current) {  
 	// customize condition logic here, return true or false  
@@ -45,7 +48,7 @@
         <name>GQI Noida Strategic Delivery Center</name>
         <name_configuration>show_last_name</name_configuration>
         <number>QUE00030</number>
-        <order>100</order>
+        <order>200</order>
         <phone_number/>
         <phone_number_label>Contact IT Support</phone_number_label>
         <queue_display_limit>5</queue_display_limit>
@@ -64,14 +67,14 @@
         <sys_created_on>2026-03-13 07:57:17</sys_created_on>
         <sys_domain>global</sys_domain>
         <sys_id>bb749b5a53633210dadf51a0a0490ea7</sys_id>
-        <sys_mod_count>1</sys_mod_count>
+        <sys_mod_count>4</sys_mod_count>
         <sys_name>GQI Noida Strategic Delivery Center</sys_name>
         <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
         <sys_policy/>
         <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
         <sys_update_name>wu_location_queue_bb749b5a53633210dadf51a0a0490ea7</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-03-13 07:58:13</sys_updated_on>
+        <sys_updated_on>2026-03-16 03:54:37</sys_updated_on>
         <target_wait_time/>
         <threshold_notification>1</threshold_notification>
         <topic/>

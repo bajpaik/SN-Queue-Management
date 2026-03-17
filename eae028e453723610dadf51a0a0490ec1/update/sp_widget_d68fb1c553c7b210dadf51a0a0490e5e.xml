@@ -205,6 +205,7 @@
                     location: c.data.queueLocation_Id,
                     includeQueueLength: true
                 }).then(function(response) {
+					console.log('fetchWaitTime respnose during initialize', response)
                     c.data.waitTime = response.data.waitTime;
                     showWaitTimeMsg(c.data.waitTime);
                 });
@@ -816,14 +817,14 @@
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-02-12 08:00:39</sys_created_on>
         <sys_id>d68fb1c553c7b210dadf51a0a0490e5e</sys_id>
-        <sys_mod_count>14</sys_mod_count>
+        <sys_mod_count>15</sys_mod_count>
         <sys_name>GQI Guest Walk-up Check-In</sys_name>
         <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
         <sys_policy/>
         <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
         <sys_update_name>sp_widget_d68fb1c553c7b210dadf51a0a0490e5e</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-03-13 05:55:13</sys_updated_on>
+        <sys_updated_on>2026-03-15 06:29:18</sys_updated_on>
         <template><![CDATA[<div class="container" style="margin-top: 20px;">
   <!-- Guest Check-In Code -->
   <div ng-if="c.formOptions.enableExternalSupport && c.showDiv.toggle" class="panel panel-primary">

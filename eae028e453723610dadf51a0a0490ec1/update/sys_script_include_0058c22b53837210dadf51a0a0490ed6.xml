@@ -19,7 +19,8 @@ WaitTimeComputationOfQueue.prototype = Object.extendsObject(global.AbstractAjaxP
 
         var workItem = new GlideRecord('awa_work_item');
         workItem.addQuery('queue', this.queueId);
-        workItem.addQuery('state', 'queued').addOrCondition('state', 'pending_accept');
+        //workItem.addQuery('state', 'queued').addOrCondition('state', 'pending_accept');
+		workItem.addQuery('sys_created_onONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()');
         workItem.addQuery('active', 'true');
         workItem.setCategory("walkup_meta");
         workItem.query();
@@ -27,7 +28,7 @@ WaitTimeComputationOfQueue.prototype = Object.extendsObject(global.AbstractAjaxP
         var records = [];
         while (workItem.next()) {
             var record = {
-                number: workItem.document_id.number,
+                number: workItem.getValue('number'),//workItem.document_id.number,
                 sysId: workItem.getUniqueValue(),
                 createdTimestamp: new GlideDateTime(workItem.sys_created_on.getDisplayValue()).getNumericValue()
             };
@@ -75,8 +76,8 @@ WaitTimeComputationOfQueue.prototype = Object.extendsObject(global.AbstractAjaxP
 
     getServiceRate: function() {
         var workItem = new GlideRecord('awa_work_item');
-        workItem.addQuery('queue', this.queueId);
-        workItem.addEncodedQuery('state=accepted^ORstate=cancelled');
+        workItem.addEncodedQuery('state=cancelled^ORstate=accepted');
+		workItem.addEncodedQuery('sys_created_onONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()');
         workItem.addQuery('active', 'true');
         workItem.setCategory("walkup_meta");
         workItem.query();
@@ -85,7 +86,7 @@ WaitTimeComputationOfQueue.prototype = Object.extendsObject(global.AbstractAjaxP
         while (workItem.next()) {
 
             var record = {
-                number: workItem.document_id.number,
+                number: workItem.getValue('number'),// workItem.document_id.number,
                 sysId: workItem.getUniqueValue(),
                 createdTimestamp: new GlideDateTime(workItem.sys_created_on.getDisplayValue()).getNumericValue(),
                 closedTimestamp: workItem.sys_updated_on ? new GlideDateTime(workItem.sys_updated_on.getDisplayValue()).getNumericValue() : null // Check if sys_updated_on exists
@@ -132,13 +133,94 @@ WaitTimeComputationOfQueue.prototype = Object.extendsObject(global.AbstractAjaxP
         return data.length ? sum / data.length : 0; // Prevent division by zero
     },
 
+    getEstimatedWaitTimeV2: function(numberOfServers, queuePosition) {
+        var arrivalRate = this.getArrivalRate().arrivalRate; // tasks per minute
+        var serviceRate = this.getServiceRate().serviceRate; // tasks per minute
+		
+        if (arrivalRate <= 0 || serviceRate <= 0 || numberOfServers <= 0) {
+            gs.warn('Invalid inputs for wait time calculation');
+            return {
+                waitTimeInQueue: 0,
+                status: 'invalid_input'
+            };
+        }
+
+        var avgWait = this.calculateErlangCWaitTime(arrivalRate, serviceRate, numberOfServers);
+
+        if (!isFinite(avgWait) || avgWait < 0) {
+            return {
+                waitTimeInQueue: Number.POSITIVE_INFINITY,
+                status: 'unstable'
+            };
+        }
+
+        // additional wait caused by queue position (approximation)
+        var extraWait = 0;
+        if (queuePosition > 1) {
+            var denom = numberOfServers * serviceRate;
+            if (denom <= arrivalRate) {
+                // defensive: avoid division by zero/negative effective capacity
+                extraWait = Number.POSITIVE_INFINITY;
+            } else {
+                extraWait = (queuePosition - 1) / denom;
+            }
+        }
+
+        var total = avgWait + extraWait;
+        return {
+            waitTimeInQueue: Math.round(total), //in Minutes
+            components: {
+                avgWait: avgWait,
+                extraWait: extraWait
+            },
+            status: 'ok'
+        };
+
+    },
+
+    calculateErlangCWaitTime: function(arrivalRate, serviceRate, servers) {
+        if (arrivalRate <= 0 || serviceRate <= 0 || servers <= 0) return 0;
+
+        var a = arrivalRate / serviceRate; // offered load (lambda/mu)
+        var rho = arrivalRate / (servers * serviceRate); // utilization per server
+
+        if (rho >= 1) {
+            gs.warn("Queue unstable: arrival rate >= capacity");
+            return Number.POSITIVE_INFINITY;
+        }
+
+        // compute sum_{k=0}^{c-1} (a^k)/k! iteratively
+        var sum = 1.0;
+        var term = 1.0;
+        for (var k = 1; k < servers; k++) {
+            term = term * a / k; // term = a^k / k!
+            sum += term;
+        }
+
+        // final term = a^c / c!
+        term = term * a / servers;
+
+        // Erlang C
+        var denomFactor = (servers - a); // c - a, positive because rho < 1
+        var numerator = term * servers / denomFactor;
+        var denominator = sum + term * servers / denomFactor;
+        var erlangC = numerator / denominator;
+
+        // Wq = ErlangC / (c*mu - lambda)
+        var denom = servers * serviceRate - arrivalRate;
+        if (denom <= 0) return Number.POSITIVE_INFINITY;
+        var waitTime = erlangC / denom;
+
+        return waitTime; // minutes
+    },
+
     getEstimatedWaitTime: function(queue, numberOfServers) {
         queue = this.queueId;
         var arrivalRate = this.getArrivalRate().arrivalRate; // tasks per minute
         var serviceRate = this.getServiceRate().serviceRate; // tasks per minute
 
-		gs.info(JSON.stringify(arrivalRate));
-		gs.info(JSON.stringify(serviceRate))
+        gs.info('ARRIVAL RATE ' + JSON.stringify(arrivalRate));
+        gs.info('SERVICE RATE ' + JSON.stringify(serviceRate))
         if (arrivalRate === 0 || serviceRate === 0 || numberOfServers === 0) {
             gs.error('Invalid arrival rate, service rate, or number of servers. Cannot calculate wait time.');
             return {
@@ -179,19 +261,20 @@ WaitTimeComputationOfQueue.prototype = Object.extendsObject(global.AbstractAjaxP
         }
         return result;
     },
+
     type: 'WaitTimeComputationOfQueue'
 });]]></script>
         <sys_class_name>sys_script_include</sys_class_name>
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2026-02-20 03:09:42</sys_created_on>
         <sys_id>0058c22b53837210dadf51a0a0490ed6</sys_id>
-        <sys_mod_count>17</sys_mod_count>
+        <sys_mod_count>36</sys_mod_count>
         <sys_name>WaitTimeComputationOfQueue</sys_name>
         <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
         <sys_policy>read</sys_policy>
         <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
         <sys_update_name>sys_script_include_0058c22b53837210dadf51a0a0490ed6</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2026-03-13 02:47:18</sys_updated_on>
+        <sys_updated_on>2026-03-16 10:43:07</sys_updated_on>
     </sys_script_include>
 </record_update>

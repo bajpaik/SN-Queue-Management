@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_80404_gqi_queu_0.WalkupQueuePredictor</api_name>
+        <caller_access/>
+        <client_callable>false</client_callable>
+        <description/>
+        <mobile_callable>false</mobile_callable>
+        <name>WalkupQueuePredictor</name>
+        <sandbox_callable>false</sandbox_callable>
+        <script><![CDATA[var WalkupQueuePredictor = Class.create();
+WalkupQueuePredictor.prototype = {
+    initialize: function() {
+        this.queueId = '';
+    },
+
+    getArrivalRate: function() {
+
+		var self = this;
+        var gr = new GlideRecord('awa_work_item');
+        gr.addQuery('queue', self.queueId);
+        gr.addEncodedQuery('sys_created_onONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()');
+        gr.orderBy('sys_created_on');
+        gr.query();
+
+        var times = [];
+
+        while (gr.next()) {
+            var t = new GlideDateTime(gr.getValue('sys_created_on')).getNumericValue();
+            times.push(t);
+        }
+
+        gs.info("ARRIVAL records: " + times.length);
+
+        if (times.length < 2) {
+            return {
+                arrivalRate: 0
+            };
+        }
+
+        var intervals = [];
+
+        for (var i = 1; i < times.length; i++) {
+
+            var diff = (times[i] - times[i - 1]) / 60000;
+
+            if (diff <= 0)
+                diff = 0.1; // prevent zero interval
+
+            intervals.push(diff);
+        }
+
+        var mean = self.calculateMean(intervals);
+
+        var rate = mean > 0 ? 1 / mean : 0;
+
+        gs.info("ARRIVAL rate: " + rate);
+
+        return {
+            arrivalRate: rate
+        };
+    },
+
+
+    getServiceRate: function() {
+        var grI = new GlideRecord('awa_work_item');
+        grI.addEncodedQuery("sys_created_onONToday@javascript:gs.beginningOfToday()@javascript:gs.endOfToday()^state=cancelled^ORstate=accepted");
+        grI.query();
+
+        var records = [];
+        while (grI.next()) {
+            var record = {
+                number: grI.getValue('number'),
+                sysId: grI.getUniqueValue(),
+                createdTimestamp: new GlideDateTime(grI.sys_created_on.getDisplayValue()).getNumericValue(),
+                closedTimestamp: grI.sys_updated_on ? new GlideDateTime(grI.sys_updated_on.getDisplayValue()).getNumericValue() : null // Check if sys_updated_on exists
+            };
+            records.push(record);
+        }
+        // Sort records by creation timestamp
+        records.sort(function(a, b) {
+            return a.createdTimestamp - b.createdTimestamp;
+        });
+
+        var serviceTimes = [];
+        // Loop to compute service times
+        for (var i = 0; i < records.length; i++) {
+            var createdTimestamp = records[i].createdTimestamp;
+            var closedTimestamp = records[i].closedTimestamp;
+            // Calculate service time (if closedTimestamp exists)
+            if (closedTimestamp) {
+
+                var totalElapsedTime = closedTimestamp - createdTimestamp;
+                serviceTimes.push(totalElapsedTime / 60000); // Convert milliseconds to minutes
+            }
+        }
+        // Handle cases where no valid service times were collected
+        if (serviceTimes.length === 0) {
+            gs.error('No valid service times found.');
+            return {
+                serviceRate: 0 // No valid service rate
+            };
+        }
+
+        // Calculate service rate
+        var meanServiceTime = this.calculateMean(serviceTimes);
+        var serviceRate = meanServiceTime > 0 ? 1 / meanServiceTime : 0; // Prevent division by zero
+        return {
+            serviceRate: serviceRate
+        };
+    },
+
+    calculateMean: function(data) {
+        var sum = data.reduce(function(acc, value) {
+            return acc + value;
+        }, 0);
+        return data.length ? sum / data.length : 0; // Prevent division by zero
+    },
+
+    getEstimatedWaitTimeM_M_c: function(numberOfServers) {
+        var arrivalRate = this.getArrivalRate().arrivalRate; // tasks per minute
+        var serviceRate = this.getServiceRate().serviceRate; // tasks per minute
+
+        if (arrivalRate === 0 || serviceRate === 0 || numberOfServers === 0) {
+            gs.error('Invalid arrival rate, service rate, or number of servers. Cannot calculate wait time.');
+            return {
+                waitTimeInQueue: 0
+            };
+        }
+
+        // Calculate utilization per server
+        var utilization = arrivalRate / (numberOfServers * serviceRate);
+
+        // Calculate P0
+        var rho = arrivalRate / (numberOfServers * serviceRate);
+        var sum = 0;
+
+        // Calculate sum of terms for P0
+        for (var k = 0; k < numberOfServers; k++) {
+            sum += Math.pow(arrivalRate / serviceRate, k) / this.factorial(k);
+        }
+        var term = Math.pow(arrivalRate / serviceRate, numberOfServers) / (this.factorial(numberOfServers) * (1 - utilization));
+        var P0 = 1 / (sum + term);
+
+        // Calculate Lq
+        var Lq = (Math.pow(arrivalRate / serviceRate, numberOfServers) * serviceRate * P0) / (this.factorial(numberOfServers) * Math.pow(1 - utilization, 2));
+
+        // Calculate Wq
+        var Wq = Lq / arrivalRate;
+
+        return {
+            waitTimeInQueue: Wq
+        };
+    },
+
+    factorial: function(n) {
+        if (n === 0 || n === 1) return 1;
+        var result = 1;
+        for (var i = 2; i <= n; i++) {
+            result *= i;
+        }
+        return result;
+    },
+
+    type: 'WalkupQueuePredictor'
+};]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-03-16 09:30:37</sys_created_on>
+        <sys_id>97b607df53a77210dadf51a0a0490efa</sys_id>
+        <sys_mod_count>10</sys_mod_count>
+        <sys_name>WalkupQueuePredictor</sys_name>
+        <sys_package display_value="GQI Queue Management" source="x_80404_gqi_queu_0">eae028e453723610dadf51a0a0490ec1</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_scope display_value="GQI Queue Management">eae028e453723610dadf51a0a0490ec1</sys_scope>
+        <sys_update_name>sys_script_include_97b607df53a77210dadf51a0a0490efa</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-03-16 10:22:06</sys_updated_on>
+    </sys_script_include>
+</record_update>
